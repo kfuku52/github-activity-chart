@@ -5,8 +5,8 @@ import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from github_activity_chart.github_api import GitHubClient
-from github_activity_chart.plotting import render_stacked_bar_chart
+from .github_api import GitHubClient
+from .plotting import render_stacked_bar_chart
 
 MONTH_FORMAT = "%Y-%m"
 

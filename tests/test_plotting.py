@@ -1,7 +1,7 @@
 from datetime import date
 from pathlib import Path
 
-from github_activity_chart.plotting import (
+from githubactivitychart.plotting import (
     _build_tick_positions_and_labels,
     _repository_totals,
     _series_style,

@@ -19,8 +19,12 @@ dev = [
   "pytest>=8.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/kfuku52/github-activity-chart"
+Repository = "https://github.com/kfuku52/github-activity-chart"
+
 [project.scripts]
-github-activity-chart = "github_activity_chart.cli:main"
+github-activity-chart = "githubactivitychart.cli:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

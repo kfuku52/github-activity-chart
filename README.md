@@ -1,6 +1,6 @@
-# github_activity_chart
+# github-activity-chart
 
-[![CI](https://github.com/kfuku52/github_activity_chart/actions/workflows/ci.yml/badge.svg)](https://github.com/kfuku52/github_activity_chart/actions/workflows/ci.yml)
+[![CI](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Version](https://img.shields.io/badge/version-0.1-orange.svg)](pyproject.toml)
@@ -10,7 +10,7 @@ A CLI tool that plots monthly GitHub commit counts as a stacked bar chart split 
 ## Installation
 
 ```bash
-pip install "git+https://github.com/kfuku52/github_activity_chart.git"
+pip install "git+https://github.com/kfuku52/github-activity-chart.git"
 ```
 
 Using a virtual environment is optional.

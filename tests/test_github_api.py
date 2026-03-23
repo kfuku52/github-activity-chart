@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from github_activity_chart.github_api import GitHubClient, RepositoryRef, iter_month_windows
+from githubactivitychart.github_api import GitHubClient, RepositoryRef, iter_month_windows
 
 
 def test_iter_month_windows_caps_current_month_at_now() -> None:
