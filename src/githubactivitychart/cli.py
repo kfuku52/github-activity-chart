@@ -18,6 +18,16 @@ def parse_month(value: str) -> date:
         raise argparse.ArgumentTypeError(f"Invalid month `{value}`. Use YYYY-MM.") from exc
 
 
+def positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"Invalid integer `{value}`.") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("Value must be 1 or greater.")
+    return parsed
+
+
 def resolve_end_month(
     to_month: date | None,
     today: date | None = None,
@@ -49,9 +59,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--top-repos",
-        type=int,
+        type=positive_int,
         default=None,
         help="Keep the top N repositories by total commits and group the rest into Other",
+    )
+    parser.add_argument(
+        "--max-contribution-repositories",
+        type=positive_int,
+        default=100,
+        help=(
+            "Maximum number of external repositories to request from GitHub "
+            "contribution data per month"
+        ),
     )
     parser.add_argument(
         "--include-private",
@@ -60,9 +79,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output",
+        dest="output_paths",
         type=Path,
-        default=Path("output/monthly_commits.pdf"),
-        help="Path to the output chart file",
+        action="append",
+        help="Path to an output chart file. Can be used multiple times.",
     )
     return parser
 
@@ -85,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             start_month=start_month,
             end_month=end_month,
             include_private=args.include_private,
+            max_contribution_repositories=args.max_contribution_repositories,
         )
         if args.from_month is None:
             non_empty_months = [month for month, counts in sorted(monthly_counts.items()) if counts]
@@ -96,17 +117,22 @@ def main(argv: list[str] | None = None) -> int:
                 for month, counts in monthly_counts.items()
                 if month >= first_month
             }
-        output_path = render_stacked_bar_chart(
-            monthly_counts=monthly_counts,
-            username=args.username,
-            output_path=args.output,
-            top_repos=args.top_repos,
-        )
+        output_paths = args.output_paths or [Path("output/monthly_commits.pdf")]
+        rendered_output_paths = [
+            render_stacked_bar_chart(
+                monthly_counts=monthly_counts,
+                username=args.username,
+                output_path=output_path,
+                top_repos=args.top_repos,
+            )
+            for output_path in output_paths
+        ]
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    print(f"Saved chart to {output_path}")
+    for output_path in rendered_output_paths:
+        print(f"Saved chart to {output_path}")
     return 0
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "github-activity-chart"
-version = "0.1"
+version = "0.1.1"
 description = "Plot monthly GitHub commit activity as a stacked bar chart by repository."
 readme = "README.md"
 license = {text = "MIT"}

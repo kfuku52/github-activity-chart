@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import warnings
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
@@ -198,7 +199,7 @@ class GitHubClient:
         *,
         allow_not_found: bool = False,
         allow_conflict: bool = False,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]] | None:
         base_params = dict(params or {})
         per_page = int(base_params.pop("per_page", 100))
         page = 1
@@ -213,6 +214,8 @@ class GitHubClient:
                 allow_conflict=allow_conflict,
             )
             if payload is None:
+                if allow_not_found:
+                    return None
                 return items
             if not isinstance(payload, list):
                 raise RuntimeError(f"Expected a list response from {path}, got {type(payload).__name__}.")
@@ -252,13 +255,9 @@ class GitHubClient:
         return self._viewer_login
 
     def fetch_user_created_at(self, username: str) -> datetime:
-        viewer_login = self.fetch_viewer_login()
-        if username.casefold() == viewer_login.casefold():
-            payload = self._get_json("/user")
-        else:
-            payload = self._get_json(f"/users/{username}", allow_not_found=True)
-            if payload is None:
-                raise RuntimeError(f"GitHub user `{username}` was not found.")
+        payload = self._get_json(f"/users/{username}", allow_not_found=True)
+        if payload is None:
+            raise RuntimeError(f"GitHub user `{username}` was not found.")
         return parse_github_datetime(payload["created_at"])
 
     def _repository_from_payload(self, payload: dict[str, Any]) -> RepositoryRef | None:
@@ -288,19 +287,33 @@ class GitHubClient:
         username: str,
         include_private: bool,
     ) -> list[RepositoryRef]:
-        viewer_login = self.fetch_viewer_login()
+        if not include_private:
+            public_payloads = self._paginate(
+                f"/users/{username}/repos",
+                {
+                    "type": "owner",
+                    "sort": "updated",
+                    "per_page": 100,
+                },
+                allow_not_found=True,
+            )
+            if public_payloads is None:
+                raise RuntimeError(f"GitHub user `{username}` was not found.")
+            return self._dedupe_repositories(public_payloads)
 
+        viewer_login = self.fetch_viewer_login()
         if username.casefold() == viewer_login.casefold():
-            visibility = "all" if include_private else "public"
             payloads = self._paginate(
                 "/user/repos",
                 {
-                    "visibility": visibility,
+                    "visibility": "all",
                     "affiliation": "owner,collaborator,organization_member",
                     "sort": "updated",
                     "per_page": 100,
                 },
             )
+            if payloads is None:
+                return []
             return [
                 repo
                 for repo in self._dedupe_repositories(payloads)
@@ -319,9 +332,6 @@ class GitHubClient:
         if public_payloads is None:
             raise RuntimeError(f"GitHub user `{username}` was not found.")
 
-        if not include_private:
-            return self._dedupe_repositories(public_payloads)
-
         accessible_payloads = self._paginate(
             "/user/repos",
             {
@@ -331,6 +341,8 @@ class GitHubClient:
                 "per_page": 100,
             },
         )
+        if accessible_payloads is None:
+            accessible_payloads = []
         extra_payloads = [
             payload
             for payload in accessible_payloads
@@ -349,7 +361,7 @@ class GitHubClient:
         from_datetime: datetime,
         to_datetime: datetime,
     ) -> list[dict[str, Any]]:
-        return self._paginate(
+        commits = self._paginate(
             f"/repos/{repository.name_with_owner}/commits",
             {
                 "author": username,
@@ -359,6 +371,7 @@ class GitHubClient:
             },
             allow_conflict=True,
         )
+        return commits or []
 
     def fetch_other_repository_contribution_counts(
         self,
@@ -368,6 +381,9 @@ class GitHubClient:
         include_private: bool = False,
         max_repositories: int = 100,
     ) -> dict[date, dict[str, int]]:
+        if max_repositories < 1:
+            raise ValueError("max_repositories must be 1 or greater.")
+
         monthly_counts: dict[date, dict[str, int]] = {}
 
         for window in iter_month_windows(start_month, end_month):
@@ -385,6 +401,14 @@ class GitHubClient:
                 raise RuntimeError(f"GitHub user `{username}` was not found.")
 
             repositories = user["contributionsCollection"]["commitContributionsByRepository"]
+            if len(repositories) >= max_repositories:
+                warnings.warn(
+                    "GitHub contribution data reached the repository limit "
+                    f"({max_repositories}) for {window.month_start:%Y-%m}; "
+                    "some external repository commits may be omitted.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             month_totals: dict[str, int] = {}
             for repository_entry in repositories:
                 repository_name = repository_entry["repository"]["nameWithOwner"]
@@ -409,6 +433,7 @@ class GitHubClient:
         start_month: date,
         end_month: date,
         include_private: bool = False,
+        max_contribution_repositories: int = 100,
     ) -> dict[date, dict[str, int]]:
         windows = iter_month_windows(start_month, end_month)
         monthly_counts: dict[date, dict[str, int]] = {
@@ -418,8 +443,6 @@ class GitHubClient:
             username=username,
             include_private=include_private,
         )
-        if not repositories:
-            return monthly_counts
 
         from_datetime = windows[0].from_datetime
         to_datetime = windows[-1].to_datetime
@@ -452,6 +475,7 @@ class GitHubClient:
             start_month=start_month,
             end_month=end_month,
             include_private=include_private,
+            max_repositories=max_contribution_repositories,
         )
         for month, repository_counts in other_repository_counts.items():
             month_counts = monthly_counts.setdefault(month, {})
