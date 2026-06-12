@@ -2,8 +2,8 @@ name: Update activity charts
 
 on:
   schedule:
-    # 09:00 every Monday in Japan Standard Time.
-    - cron: "0 0 * * 1"
+    # 09:00 on the first day of every month in Japan Standard Time.
+    - cron: "0 0 1 * *"
   workflow_dispatch:
 
 permissions:
@@ -38,14 +38,13 @@ jobs:
             --output output/kfuku52_all_months.png \
             --output output/kfuku52_all_months.pdf
 
-      - name: Generate private-included charts
+      - name: Generate private-included PDF
         if: env.ACTIVITY_CHART_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ env.ACTIVITY_CHART_TOKEN }}
         run: |
           github-activity-chart kfuku52 \
             --include-private \
-            --output output/kfuku52_all_months_with_private.png \
             --output output/kfuku52_all_months_with_private.pdf
 
       - name: Commit updated charts
@@ -53,7 +52,6 @@ jobs:
           if git diff --quiet -- \
             output/kfuku52_all_months.png \
             output/kfuku52_all_months.pdf \
-            output/kfuku52_all_months_with_private.png \
             output/kfuku52_all_months_with_private.pdf; then
             echo "No chart changes to commit."
             exit 0
@@ -64,7 +62,6 @@ jobs:
           git add \
             output/kfuku52_all_months.png \
             output/kfuku52_all_months.pdf \
-            output/kfuku52_all_months_with_private.png \
             output/kfuku52_all_months_with_private.pdf
           git commit -m "Update kfuku52 activity charts"
           git push

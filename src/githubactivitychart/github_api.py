@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import email.utils
 import os
 import shutil
 import subprocess
+import time as time_module
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
@@ -12,6 +15,10 @@ import requests
 
 GITHUB_API_URL = "https://api.github.com"
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
+REQUEST_TIMEOUT_SECONDS = 30
+MAX_RETRIES = 3
+MAX_RATE_LIMIT_WAIT_SECONDS = 60
+RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 
 MONTHLY_COMMITS_QUERY = """
 query MonthlyCommitContributions(
@@ -53,6 +60,10 @@ class RepositoryRef:
     owner_login: str
     is_private: bool
     default_branch: str | None
+    pushed_at: datetime | None = None
+
+
+ProgressCallback = Callable[[str], None]
 
 
 def add_month(month_start: date) -> date:
@@ -63,6 +74,25 @@ def add_month(month_start: date) -> date:
 
 def parse_github_datetime(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def parse_retry_after(value: str | None, now: datetime | None = None) -> float | None:
+    if value is None:
+        return None
+
+    try:
+        delay = float(value)
+    except ValueError:
+        try:
+            retry_at = email.utils.parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        now = now or datetime.now(timezone.utc)
+        delay = (retry_at.astimezone(timezone.utc) - now).total_seconds()
+
+    return max(0.0, delay)
 
 
 def build_month_window(
@@ -136,7 +166,14 @@ def resolve_github_token() -> str:
 
 
 class GitHubClient:
-    def __init__(self, token: str) -> None:
+    def __init__(
+        self,
+        token: str,
+        *,
+        sleep: Callable[[float], None] = time_module.sleep,
+        max_retries: int = MAX_RETRIES,
+        max_rate_limit_wait_seconds: float = MAX_RATE_LIMIT_WAIT_SECONDS,
+    ) -> None:
         self._session = requests.Session()
         self._session.headers.update(
             {
@@ -146,10 +183,98 @@ class GitHubClient:
             }
         )
         self._viewer_login: str | None = None
+        self._sleep = sleep
+        self._max_retries = max_retries
+        self._max_rate_limit_wait_seconds = max_rate_limit_wait_seconds
 
     @classmethod
     def from_environment(cls) -> "GitHubClient":
         return cls(resolve_github_token())
+
+    def _backoff_delay(self, attempt: int) -> float:
+        return min(2.0**attempt, 10.0)
+
+    def _rate_limit_delay(self, response: requests.Response) -> float | None:
+        if response.status_code not in {403, 429}:
+            return None
+
+        retry_after = parse_retry_after(response.headers.get("Retry-After"))
+        if retry_after is not None:
+            return retry_after
+
+        if response.headers.get("X-RateLimit-Remaining") == "0":
+            reset = response.headers.get("X-RateLimit-Reset")
+            if reset is not None:
+                try:
+                    reset_epoch = int(reset)
+                except ValueError:
+                    return None
+                return max(0.0, reset_epoch - time_module.time() + 1)
+
+        return None
+
+    def _looks_like_secondary_rate_limit(self, response: requests.Response) -> bool:
+        if response.status_code not in {403, 429}:
+            return False
+        response_text = response.text.casefold()
+        return (
+            "secondary rate limit" in response_text
+            or "rate limit exceeded" in response_text
+            or "too many requests" in response_text
+        )
+
+    def _raise_rate_limit_error(
+        self,
+        description: str,
+        response: requests.Response,
+        delay_seconds: float,
+    ) -> None:
+        reset = response.headers.get("X-RateLimit-Reset")
+        reset_detail = ""
+        if reset is not None:
+            try:
+                reset_at = datetime.fromtimestamp(int(reset), tz=timezone.utc)
+            except ValueError:
+                reset_detail = f" reset={reset!r}."
+            else:
+                reset_detail = f" reset at {reset_at.isoformat()}."
+
+        raise RuntimeError(
+            "GitHub API rate limit reached for "
+            f"{description}; retry after about {int(delay_seconds)} seconds.{reset_detail}"
+        )
+
+    def _send_with_retries(
+        self,
+        request: Callable[[], requests.Response],
+        description: str,
+    ) -> requests.Response:
+        response: requests.Response | None = None
+        for attempt in range(self._max_retries + 1):
+            response = request()
+            if attempt >= self._max_retries:
+                return response
+
+            rate_limit_delay = self._rate_limit_delay(response)
+            if rate_limit_delay is not None:
+                if rate_limit_delay > self._max_rate_limit_wait_seconds:
+                    self._raise_rate_limit_error(description, response, rate_limit_delay)
+                self._sleep(rate_limit_delay)
+                continue
+
+            if self._looks_like_secondary_rate_limit(response):
+                self._sleep(self._backoff_delay(attempt))
+                continue
+
+            if response.status_code in RETRY_STATUS_CODES:
+                self._sleep(self._backoff_delay(attempt))
+                continue
+
+            return response
+
+        if response is None:
+            raise RuntimeError(f"GitHub API request was not attempted for {description}.")
+        return response
 
     def _request(
         self,
@@ -159,10 +284,13 @@ class GitHubClient:
         allow_not_found: bool = False,
         allow_conflict: bool = False,
     ) -> requests.Response | None:
-        response = self._session.get(
-            f"{GITHUB_API_URL}{path}",
-            params=params,
-            timeout=30,
+        response = self._send_with_retries(
+            lambda: self._session.get(
+                f"{GITHUB_API_URL}{path}",
+                params=params,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            ),
+            f"REST {path}",
         )
         if allow_not_found and response.status_code == 404:
             return None
@@ -228,10 +356,13 @@ class GitHubClient:
             page += 1
 
     def execute_graphql(self, query: str, variables: dict[str, object]) -> dict[str, Any]:
-        response = self._session.post(
-            GITHUB_GRAPHQL_URL,
-            json={"query": query, "variables": variables},
-            timeout=30,
+        response = self._send_with_retries(
+            lambda: self._session.post(
+                GITHUB_GRAPHQL_URL,
+                json={"query": query, "variables": variables},
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            ),
+            "GraphQL",
         )
         if response.status_code != 200:
             raise RuntimeError(
@@ -241,6 +372,8 @@ class GitHubClient:
         payload = response.json()
         if payload.get("errors"):
             messages = ", ".join(error.get("message", "Unknown GraphQL error") for error in payload["errors"])
+            if "rate limit" in messages.casefold():
+                raise RuntimeError(f"GitHub GraphQL API rate limit error: {messages}")
             raise RuntimeError(f"GitHub GraphQL API error: {messages}")
 
         data = payload.get("data")
@@ -264,11 +397,13 @@ class GitHubClient:
         default_branch = payload.get("default_branch")
         if default_branch is None:
             return None
+        pushed_at = payload.get("pushed_at")
         return RepositoryRef(
             name_with_owner=payload["full_name"],
             owner_login=payload["owner"]["login"],
             is_private=bool(payload["private"]),
             default_branch=default_branch,
+            pushed_at=parse_github_datetime(pushed_at) if pushed_at else None,
         )
 
     def _dedupe_repositories(self, payloads: list[dict[str, Any]]) -> list[RepositoryRef]:
@@ -380,13 +515,20 @@ class GitHubClient:
         end_month: date,
         include_private: bool = False,
         max_repositories: int = 100,
+        progress_callback: ProgressCallback | None = None,
     ) -> dict[date, dict[str, int]]:
         if max_repositories < 1:
             raise ValueError("max_repositories must be 1 or greater.")
 
         monthly_counts: dict[date, dict[str, int]] = {}
+        windows = iter_month_windows(start_month, end_month)
 
-        for window in iter_month_windows(start_month, end_month):
+        for index, window in enumerate(windows, start=1):
+            if progress_callback is not None:
+                progress_callback(
+                    f"Fetching external contributions for {window.month_start:%Y-%m} "
+                    f"({index}/{len(windows)})"
+                )
             data = self.execute_graphql(
                 MONTHLY_COMMITS_QUERY,
                 {
@@ -434,6 +576,7 @@ class GitHubClient:
         end_month: date,
         include_private: bool = False,
         max_contribution_repositories: int = 100,
+        progress_callback: ProgressCallback | None = None,
     ) -> dict[date, dict[str, int]]:
         windows = iter_month_windows(start_month, end_month)
         monthly_counts: dict[date, dict[str, int]] = {
@@ -443,11 +586,24 @@ class GitHubClient:
             username=username,
             include_private=include_private,
         )
+        if progress_callback is not None:
+            progress_callback(f"Found {len(repositories)} owned or accessible repositories.")
 
         from_datetime = windows[0].from_datetime
         to_datetime = windows[-1].to_datetime
 
-        for repository in repositories:
+        for index, repository in enumerate(repositories, start=1):
+            if repository.pushed_at is not None and repository.pushed_at < from_datetime:
+                if progress_callback is not None:
+                    progress_callback(
+                        f"Skipping {repository.name_with_owner} ({index}/{len(repositories)}): "
+                        f"no pushes since {start_month:%Y-%m}"
+                    )
+                continue
+            if progress_callback is not None:
+                progress_callback(
+                    f"Fetching commits for {repository.name_with_owner} ({index}/{len(repositories)})"
+                )
             commits = self.iter_repository_commits(
                 repository=repository,
                 username=username,
@@ -476,6 +632,7 @@ class GitHubClient:
             end_month=end_month,
             include_private=include_private,
             max_repositories=max_contribution_repositories,
+            progress_callback=progress_callback,
         )
         for month, repository_counts in other_repository_counts.items():
             month_counts = monthly_counts.setdefault(month, {})

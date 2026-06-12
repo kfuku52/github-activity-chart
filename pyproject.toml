@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "github-activity-chart"
-version = "0.1.1"
+version = "0.1.2"
 description = "Plot monthly GitHub commit activity as a stacked bar chart by repository."
 readme = "README.md"
 license = {text = "MIT"}
@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+  "ruff>=0.11",
 ]
 
 [project.urls]
@@ -29,6 +30,10 @@ github-activity-chart = "githubactivitychart.cli:main"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

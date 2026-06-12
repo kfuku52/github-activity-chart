@@ -60,5 +60,44 @@ def test_main_renders_multiple_outputs_after_single_fetch(monkeypatch, tmp_path:
     assert exit_code == 0
     assert len(fetch_calls) == 1
     assert fetch_calls[0]["max_contribution_repositories"] == 25
+    assert fetch_calls[0]["progress_callback"] is cli.print_progress
     assert [call["output_path"] for call in render_calls] == [first_output, second_output]
     assert all(call["monthly_counts"] is monthly_counts for call in render_calls)
+
+
+def test_main_quiet_suppresses_progress_callback(monkeypatch, tmp_path: Path) -> None:
+    fetch_calls = []
+    monthly_counts = {date(2026, 1, 1): {"me/repo": 2}}
+
+    class FakeClient:
+        def fetch_monthly_commit_counts(self, **kwargs):
+            fetch_calls.append(kwargs)
+            return monthly_counts
+
+    class FakeGitHubClient:
+        @classmethod
+        def from_environment(cls):
+            return FakeClient()
+
+    monkeypatch.setattr(cli, "GitHubClient", FakeGitHubClient)
+    monkeypatch.setattr(
+        cli,
+        "render_stacked_bar_chart",
+        lambda **kwargs: kwargs["output_path"],
+    )
+
+    exit_code = cli.main(
+        [
+            "me",
+            "--from",
+            "2026-01",
+            "--to",
+            "2026-01",
+            "--quiet",
+            "--output",
+            str(tmp_path / "chart.pdf"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert fetch_calls[0]["progress_callback"] is None

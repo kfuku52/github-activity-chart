@@ -1,9 +1,25 @@
+import json
 import warnings
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
+import requests
 
-from githubactivitychart.github_api import GitHubClient, RepositoryRef, iter_month_windows
+from githubactivitychart.github_api import GitHubClient, RepositoryRef, iter_month_windows, parse_retry_after
+
+
+def make_response(
+    status_code: int,
+    payload: object | None = None,
+    headers: dict[str, str] | None = None,
+    text: str | None = None,
+) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status_code
+    response.headers.update(headers or {})
+    body = text if text is not None else json.dumps(payload if payload is not None else {})
+    response._content = body.encode()
+    return response
 
 
 def test_iter_month_windows_caps_current_month_at_now() -> None:
@@ -16,6 +32,79 @@ def test_iter_month_windows_caps_current_month_at_now() -> None:
     assert [window.month_start for window in windows] == [date(2026, 2, 1), date(2026, 3, 1)]
     assert windows[0].to_datetime.isoformat() == "2026-02-28T23:59:59+00:00"
     assert windows[1].to_datetime.isoformat() == "2026-03-23T12:34:56+00:00"
+
+
+def test_parse_retry_after_accepts_http_date() -> None:
+    now = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+    assert parse_retry_after("Thu, 01 Jan 2026 00:00:03 GMT", now=now) == 3
+
+
+def test_rest_request_retries_transient_failures(monkeypatch) -> None:
+    sleeps = []
+    client = GitHubClient("dummy-token", sleep=sleeps.append, max_retries=2)
+    responses = [
+        make_response(503, text="Service Unavailable"),
+        make_response(200, payload=[]),
+    ]
+
+    def fake_get(*args, **kwargs):
+        return responses.pop(0)
+
+    monkeypatch.setattr(client._session, "get", fake_get)
+
+    assert client._paginate("/repos") == []
+    assert sleeps == [1.0]
+
+
+def test_rest_request_retries_short_retry_after(monkeypatch) -> None:
+    sleeps = []
+    client = GitHubClient(
+        "dummy-token",
+        sleep=sleeps.append,
+        max_retries=2,
+        max_rate_limit_wait_seconds=2,
+    )
+    responses = [
+        make_response(
+            429,
+            payload={"message": "too many requests"},
+            headers={"Retry-After": "1"},
+        ),
+        make_response(200, payload=[]),
+    ]
+
+    def fake_get(*args, **kwargs):
+        return responses.pop(0)
+
+    monkeypatch.setattr(client._session, "get", fake_get)
+
+    assert client._paginate("/repos") == []
+    assert sleeps == [1.0]
+
+
+def test_rest_request_raises_for_long_rate_limit(monkeypatch) -> None:
+    client = GitHubClient(
+        "dummy-token",
+        sleep=lambda delay: None,
+        max_rate_limit_wait_seconds=0,
+    )
+    reset_at = int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp())
+
+    def fake_get(*args, **kwargs):
+        return make_response(
+            403,
+            payload={"message": "API rate limit exceeded"},
+            headers={
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(reset_at),
+            },
+        )
+
+    monkeypatch.setattr(client._session, "get", fake_get)
+
+    with pytest.raises(RuntimeError, match="GitHub API rate limit reached"):
+        client._request("/rate-limited")
 
 
 def test_paginate_preserves_allowed_not_found(monkeypatch) -> None:
@@ -222,6 +311,49 @@ def test_fetch_monthly_commit_counts_includes_external_contributions_without_own
         date(2026, 1, 1): {"other/shared-repo": 4},
         date(2026, 2, 1): {},
     }
+
+
+def test_fetch_monthly_commit_counts_skips_repositories_not_pushed_since_start(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+    repositories = [
+        RepositoryRef(
+            name_with_owner="me/old-repo",
+            owner_login="me",
+            is_private=False,
+            default_branch="main",
+            pushed_at=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
+        ),
+        RepositoryRef(
+            name_with_owner="me/current-repo",
+            owner_login="me",
+            is_private=False,
+            default_branch="main",
+            pushed_at=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        ),
+    ]
+    fetched_repositories = []
+
+    monkeypatch.setattr(client, "list_repositories_for_user", lambda **kwargs: repositories)
+
+    def fake_iter_repository_commits(repository: RepositoryRef, username: str, from_datetime, to_datetime):
+        fetched_repositories.append(repository.name_with_owner)
+        return [{"commit": {"author": {"date": "2026-01-02T00:00:00Z"}}}]
+
+    monkeypatch.setattr(client, "iter_repository_commits", fake_iter_repository_commits)
+    monkeypatch.setattr(
+        client,
+        "fetch_other_repository_contribution_counts",
+        lambda **kwargs: {date(2026, 1, 1): {}},
+    )
+
+    counts = client.fetch_monthly_commit_counts(
+        username="me",
+        start_month=date(2026, 1, 1),
+        end_month=date(2026, 1, 1),
+    )
+
+    assert fetched_repositories == ["me/current-repo"]
+    assert counts == {date(2026, 1, 1): {"me/current-repo": 1}}
 
 
 def test_fetch_other_repository_contribution_counts_skips_owned_repos(monkeypatch) -> None:

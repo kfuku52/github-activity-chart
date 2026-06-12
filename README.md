@@ -3,7 +3,7 @@
 [![CI](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.1.1-orange.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.1.2-orange.svg)](pyproject.toml)
 
 A CLI tool that plots monthly GitHub commit counts as a stacked bar chart split by repository.
 
@@ -52,6 +52,14 @@ Limit the number of displayed repositories:
 github-activity-chart octocat --top-repos 10 --output output/octocat_top10.pdf
 ```
 
+For accounts with many repositories or long histories, use `--from` to reduce GitHub API calls:
+
+```bash
+github-activity-chart octocat --from 2024-01 --output output/octocat_recent.pdf
+```
+
+Progress is written to stderr during data fetching. Use `--quiet` to suppress it.
+
 ## Example
 
 Example output for `kfuku52` without private repositories:
@@ -62,13 +70,11 @@ github-activity-chart kfuku52 --output output/kfuku52_all_months.png
 
 ![Public-only example](output/kfuku52_all_months.png)
 
-Example output for `kfuku52` with private repositories included:
+Generate a PDF for `kfuku52` with private repositories included:
 
 ```bash
-github-activity-chart kfuku52 --include-private --output output/kfuku52_all_months_with_private.png
+github-activity-chart kfuku52 --include-private --output output/kfuku52_all_months_with_private.pdf
 ```
-
-![Private-included example](output/kfuku52_all_months_with_private.png)
 
 ## Notes
 

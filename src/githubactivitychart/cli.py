@@ -28,6 +28,10 @@ def positive_int(value: str) -> int:
     return parsed
 
 
+def print_progress(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
 def resolve_end_month(
     to_month: date | None,
     today: date | None = None,
@@ -84,6 +88,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help="Path to an output chart file. Can be used multiple times.",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress output.",
+    )
     return parser
 
 
@@ -100,12 +109,16 @@ def main(argv: list[str] | None = None) -> int:
             start_month = date(created_at.year, created_at.month, 1)
         if start_month > end_month:
             raise ValueError("--from must not be later than --to.")
+
+        progress_callback = None if args.quiet else print_progress
+
         monthly_counts = client.fetch_monthly_commit_counts(
             username=args.username,
             start_month=start_month,
             end_month=end_month,
             include_private=args.include_private,
             max_contribution_repositories=args.max_contribution_repositories,
+            progress_callback=progress_callback,
         )
         if args.from_month is None:
             non_empty_months = [month for month, counts in sorted(monthly_counts.items()) if counts]
