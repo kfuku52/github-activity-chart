@@ -1,0 +1,4 @@
+matplotlib>=3.8,<4
+requests>=2.33,<3
+setuptools>=77
+wheel

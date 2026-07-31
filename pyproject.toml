@@ -1,21 +1,24 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "github-activity-chart"
-version = "0.1.2"
-description = "Plot monthly GitHub commit activity as a stacked bar chart by repository."
+dynamic = ["version"]
+description = "Plot monthly GitHub commit contributions as a stacked bar chart by repository."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
-  "matplotlib>=3.8",
-  "requests>=2.31",
+  "matplotlib>=3.8,<4",
+  "requests>=2.33,<3",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.3",
+  "pytest-cov>=7.0",
   "pytest>=8.0",
   "ruff>=0.11",
 ]
@@ -30,6 +33,7 @@ github-activity-chart = "githubactivitychart.cli:main"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = "--strict-config --strict-markers"
 
 [tool.ruff]
 line-length = 120
@@ -37,6 +41,9 @@ target-version = "py311"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+version = {attr = "githubactivitychart.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

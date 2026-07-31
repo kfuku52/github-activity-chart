@@ -6,4 +6,5 @@ __pycache__/
 *.egg-info/
 build/
 dist/
-/output/*_with_private.png
+/output/*_with_private.*
+/private-output/
