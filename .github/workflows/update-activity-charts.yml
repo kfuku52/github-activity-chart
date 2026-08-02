@@ -2,8 +2,8 @@ name: Update activity charts
 
 on:
   schedule:
-    # 09:00 on the first day of every month in Japan Standard Time.
-    - cron: "0 0 1 * *"
+    # 09:17 on the first day of every month in Japan Standard Time.
+    - cron: "17 0 1 * *"
   workflow_dispatch:
 
 concurrency:
@@ -37,13 +37,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          TO_MONTH="$(
-            python -c 'from datetime import datetime, timedelta, timezone; now = datetime.now(timezone.utc); print((now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m"))'
-          )"
+          read -r FROM_MONTH TO_MONTH < <(
+            python - <<'PY'
+          from datetime import UTC, datetime
+
+          now = datetime.now(UTC)
+          end_month_index = now.year * 12 + now.month - 2
+          start_month_index = end_month_index - 35
+          end_year, end_month = divmod(end_month_index, 12)
+          start_year, start_month = divmod(start_month_index, 12)
+          print(
+              f"{start_year:04d}-{start_month + 1:02d} "
+              f"{end_year:04d}-{end_month + 1:02d}"
+          )
+          PY
+          )
           github-activity-chart kfuku52 \
             --to "${TO_MONTH}" \
             --output output/kfuku52_all_months.png \
             --output output/kfuku52_all_months.pdf
+          github-activity-chart kfuku52 \
+            --from "${FROM_MONTH}" \
+            --to "${TO_MONTH}" \
+            --top-repos 6 \
+            --output output/kfuku52_last_36_months.svg
 
       - name: Upload generated charts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -52,6 +69,7 @@ jobs:
           path: |
             output/kfuku52_all_months.png
             output/kfuku52_all_months.pdf
+            output/kfuku52_last_36_months.svg
           if-no-files-found: error
           retention-days: 1
 
@@ -76,7 +94,8 @@ jobs:
         run: |
           if git diff --quiet -- \
             output/kfuku52_all_months.png \
-            output/kfuku52_all_months.pdf; then
+            output/kfuku52_all_months.pdf \
+            output/kfuku52_last_36_months.svg; then
             echo "No chart changes to commit."
             exit 0
           fi
@@ -85,6 +104,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             output/kfuku52_all_months.png \
-            output/kfuku52_all_months.pdf
+            output/kfuku52_all_months.pdf \
+            output/kfuku52_last_36_months.svg
           git commit -m "Update kfuku52 activity charts"
           git push origin HEAD:main
