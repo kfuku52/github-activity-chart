@@ -260,6 +260,7 @@ def render_stacked_bar_chart(
             bbox_to_anchor=(1.01, 1),
             loc="upper left",
             borderaxespad=0.0,
+            labelspacing=0.3,
             fontsize=FONT_SIZE_PT,
             title_fontsize=FONT_SIZE_PT,
         )
