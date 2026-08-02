@@ -301,7 +301,7 @@ def test_atomic_render_failure_preserves_all_existing_outputs(
             monthly_counts={date(2026, 1, 1): {"me/repo": 1}},
             username="me",
             output_paths=[first_output, second_output],
-            top_repos=15,
+            top_repos=20,
             as_of=None,
         )
 
@@ -327,7 +327,7 @@ def test_atomic_render_success_replaces_existing_outputs(
         monthly_counts={date(2026, 1, 1): {"me/repo": 1}},
         username="me",
         output_paths=[output],
-        top_repos=15,
+        top_repos=20,
         as_of=None,
     )
 
@@ -366,7 +366,7 @@ def test_atomic_install_failure_rolls_back_already_replaced_outputs(
             monthly_counts={date(2026, 1, 1): {"me/repo": 1}},
             username="me",
             output_paths=[first_output, second_output],
-            top_repos=15,
+            top_repos=20,
             as_of=None,
         )
 

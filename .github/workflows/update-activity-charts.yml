@@ -59,7 +59,6 @@ jobs:
           github-activity-chart kfuku52 \
             --from "${FROM_MONTH}" \
             --to "${TO_MONTH}" \
-            --top-repos 6 \
             --output output/kfuku52_last_36_months.svg
 
       - name: Upload generated charts

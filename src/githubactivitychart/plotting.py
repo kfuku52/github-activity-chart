@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 
 FONT_SIZE_PT = 8
-DEFAULT_TOP_REPOSITORIES = 15
+DEFAULT_TOP_REPOSITORIES = 20
 SUPPORTED_OUTPUT_SUFFIXES = frozenset({".pdf", ".png", ".svg"})
 SERIES_COLORS = [
     "#4477AA",
