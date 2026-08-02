@@ -3,7 +3,7 @@
 [![CI](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.2.2-orange.svg)](src/githubactivitychart/__init__.py)
+[![Version](https://img.shields.io/badge/version-0.2.3-orange.svg)](src/githubactivitychart/__init__.py)
 
 A CLI tool that plots monthly GitHub profile-eligible commit contributions as a
 stacked bar chart split by repository.

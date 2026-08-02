@@ -205,7 +205,7 @@ def render_stacked_bar_chart(
     stacked_base = [0] * len(months)
     tick_positions, tick_labels = _build_tick_positions_and_labels(months)
     figure_width = min(16.0, max(8.0, 6.0 + len(months) * 0.08))
-    figure_height = min(7.0, max(5.0, 3.8 + len(repositories) * 0.16))
+    figure_height = min(3.5, max(2.5, 1.9 + len(repositories) * 0.08))
     figure = Figure(
         figsize=(figure_width, figure_height),
         constrained_layout=True,

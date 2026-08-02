@@ -233,4 +233,4 @@ def test_default_limit_keeps_large_chart_dimensions_bounded(tmp_path: Path) -> N
     with Image.open(output_path) as image:
         width, height = image.size
     assert width <= 4000
-    assert height <= 2000
+    assert height <= 1000
