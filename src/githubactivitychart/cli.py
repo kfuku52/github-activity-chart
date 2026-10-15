@@ -14,7 +14,7 @@ from .plotting import (
     DEFAULT_TOP_REPOSITORIES,
     SUPPORTED_OUTPUT_SUFFIXES,
     ChartRenderError,
-    render_stacked_bar_chart,
+    render_stacked_bar_charts,
 )
 
 MIN_GITHUB_MONTH = date(2008, 1, 1)
@@ -178,13 +178,13 @@ def render_outputs_atomically(
                 f".{output_path.stem}.{transaction_id}.tmp{output_path.suffix.casefold()}"
             )
             staged.append((temporary_path, output_path))
-            render_stacked_bar_chart(
-                monthly_counts=monthly_counts,
-                username=username,
-                output_path=temporary_path,
-                top_repos=top_repos,
-                as_of=as_of,
-            )
+        render_stacked_bar_charts(
+            monthly_counts=monthly_counts,
+            username=username,
+            output_paths=[temporary_path for temporary_path, _ in staged],
+            top_repos=top_repos,
+            as_of=as_of,
+        )
 
         for temporary_path, output_path in staged:
             if output_path.exists():

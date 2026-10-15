@@ -5,11 +5,10 @@ from collections import defaultdict
 from contextlib import nullcontext
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from matplotlib import rc_context
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.figure import Figure
-from matplotlib.ticker import MaxNLocator
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
 
 FONT_SIZE_PT = 8
 DEFAULT_TOP_REPOSITORIES = 20
@@ -171,17 +170,16 @@ def _output_metadata(output_suffix: str) -> dict[str, object]:
     return {"Software": "github-activity-chart"}
 
 
-def render_stacked_bar_chart(
+def _build_chart_figure(
     monthly_counts: dict[date, dict[str, int]],
     username: str,
-    output_path: Path,
     top_repos: int | None = DEFAULT_TOP_REPOSITORIES,
     as_of: datetime | None = None,
-) -> Path:
-    suffix = output_path.suffix.casefold()
-    if suffix not in SUPPORTED_OUTPUT_SUFFIXES:
-        supported = ", ".join(sorted(SUPPORTED_OUTPUT_SUFFIXES))
-        raise ChartRenderError(f"Unsupported output format for `{output_path}`. Use one of: {supported}.")
+) -> Figure:
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+    from matplotlib.ticker import MaxNLocator
+
     if not isinstance(username, str) or not username.strip():
         raise ChartRenderError("GitHub username must be a non-empty string.")
 
@@ -191,7 +189,7 @@ def render_stacked_bar_chart(
         top_repos=top_repos,
     )
     repository_totals = _repository_totals(normalized_counts)
-    repositories = _ordered_repositories(normalized_counts)
+    repositories = sorted(repository_totals, key=lambda repository: (-repository_totals[repository], repository))
     months = sorted(normalized_counts)
 
     if as_of is not None:
@@ -269,19 +267,64 @@ def render_stacked_bar_chart(
         axis.set_ylim(0, max_total + y_padding)
         axis.set_xlim(-0.5, len(months) - 0.5)
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        deterministic_svg = rc_context({"svg.hashsalt": "github-activity-chart"}) if suffix == ".svg" else nullcontext()
-        with deterministic_svg:
-            figure.savefig(
-                output_path,
-                format=suffix.removeprefix("."),
-                dpi=200,
-                bbox_inches="tight",
-                metadata=_output_metadata(suffix),
-            )
-    except (OSError, ValueError) as exc:
-        raise ChartRenderError(f"Could not render `{output_path}`: {exc}") from exc
+        return figure
+    except Exception:
+        figure.clear()
+        raise
+
+
+def render_stacked_bar_charts(
+    monthly_counts: dict[date, dict[str, int]],
+    username: str,
+    output_paths: list[Path],
+    top_repos: int | None = DEFAULT_TOP_REPOSITORIES,
+    as_of: datetime | None = None,
+) -> list[Path]:
+    """Build a chart once and export it to every requested destination."""
+    from matplotlib import rc_context
+
+    for output_path in output_paths:
+        if output_path.suffix.casefold() not in SUPPORTED_OUTPUT_SUFFIXES:
+            supported = ", ".join(sorted(SUPPORTED_OUTPUT_SUFFIXES))
+            raise ChartRenderError(f"Unsupported output format for `{output_path}`. Use one of: {supported}.")
+    if not output_paths:
+        return output_paths
+
+    figure = _build_chart_figure(monthly_counts, username, top_repos, as_of)
+    axis = figure.axes[0]
+    initial_position = axis.get_position().frozen()
+    try:
+        for output_path in output_paths:
+            suffix = output_path.suffix.casefold()
+            # Each backend must start from the same geometry as a fresh figure.
+            axis.set_position(initial_position)
+            axis.set_in_layout(True)
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                deterministic_svg = (
+                    rc_context({"svg.hashsalt": "github-activity-chart"}) if suffix == ".svg" else nullcontext()
+                )
+                with deterministic_svg:
+                    figure.savefig(
+                        output_path,
+                        format=suffix.removeprefix("."),
+                        dpi=200,
+                        bbox_inches="tight",
+                        metadata=_output_metadata(suffix),
+                    )
+            except (OSError, ValueError) as exc:
+                raise ChartRenderError(f"Could not render `{output_path}`: {exc}") from exc
     finally:
         figure.clear()
+    return output_paths
 
+
+def render_stacked_bar_chart(
+    monthly_counts: dict[date, dict[str, int]],
+    username: str,
+    output_path: Path,
+    top_repos: int | None = DEFAULT_TOP_REPOSITORIES,
+    as_of: datetime | None = None,
+) -> Path:
+    render_stacked_bar_charts(monthly_counts, username, [output_path], top_repos, as_of)
     return output_path

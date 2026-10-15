@@ -452,7 +452,7 @@ def test_fetch_monthly_counts_uses_one_consistent_contribution_source(
 
     def fake_execute(query, variables):
         calls.append(variables)
-        return payloads.pop(0)
+        return {f"month{index}": payload["user"] for index, payload in enumerate(payloads)}
 
     monkeypatch.setattr(client, "execute_graphql", fake_execute)
     monkeypatch.setattr(client, "validate_private_access", lambda: None)
@@ -476,7 +476,10 @@ def test_fetch_monthly_counts_uses_one_consistent_contribution_source(
             "Private repositories": 5,
         },
     }
-    assert all(call["maxRepositories"] == 100 for call in calls)
+    assert len(calls) == 1
+    assert calls[0]["maxRepositories"] == 100
+    assert calls[0]["from0"] == "2026-01-01T00:00:00+00:00"
+    assert calls[0]["to1"] == "2026-02-28T23:59:59.999999+00:00"
 
 
 def test_fetch_monthly_counts_hides_private_data_unless_requested(
@@ -642,4 +645,60 @@ def test_fetch_monthly_counts_reports_missing_user(monkeypatch) -> None:
             date(2026, 1, 1),
             date(2026, 1, 1),
             now=datetime(2026, 2, 1, tzinfo=UTC),
+        )
+
+
+@pytest.mark.parametrize("months", [6, 7, 12, 13])
+def test_month_batches_preserve_every_month_and_cap_current_month(monkeypatch, months: int) -> None:
+    client = GitHubClient("dummy-token")
+    now = datetime(2026, 1, 15, 12, 30, tzinfo=UTC)
+    windows = iter_month_windows(date(2025, 1, 1), date(2026, 1, 1), now=now)[:months]
+    calls = []
+    progress = []
+
+    def fake_execute(query, variables):
+        calls.append(variables)
+        assert "contributions(first: 31)" in query
+        starts = sorted(key for key in variables if key.startswith("from"))
+        result = {}
+        for index, key in enumerate(starts):
+            start = datetime.fromisoformat(variables[key]).date()
+            # Every day in January, including day 31, contributes to the sum.
+            payload = contribution_payload([("me/repo", False, [start.month] * 31)])
+            result["user" if key == "from" else f"month{index}"] = payload["user"]
+            window = next(window for window in windows if window.month_start == start)
+            assert variables[key.replace("from", "to")] == window.to_datetime.isoformat()
+        return result
+
+    monkeypatch.setattr(client, "execute_graphql", fake_execute)
+    counts = client.fetch_monthly_commit_counts(
+        "me", windows[0].month_start, windows[-1].month_start, now=now, progress_callback=progress.append
+    )
+
+    assert counts == {window.month_start: {"me/repo": window.month_start.month * 31} for window in windows}
+    assert len(calls) == (months + 5) // 6
+    assert len(progress) == months
+    assert progress[-1].endswith(f"({months}/{months})")
+
+
+def test_month_batch_rejects_missing_alias(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+    monkeypatch.setattr(client, "execute_graphql", lambda *args: {"month0": None})
+    with pytest.raises(GitHubAPIError, match="incomplete contribution"):
+        client.fetch_monthly_commit_counts(
+            "me", date(2025, 1, 1), date(2025, 2, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+
+
+def test_month_batch_rejects_incomplete_later_month(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+    payload = contribution_payload([("me/repo", False, [1])])["user"]
+    incomplete = contribution_payload([("me/repo", False, [2])])["user"]
+    incomplete["contributionsCollection"]["commitContributionsByRepository"][0]["contributions"]["pageInfo"][
+        "hasNextPage"
+    ] = True
+    monkeypatch.setattr(client, "execute_graphql", lambda *args: {"month0": payload, "month1": incomplete})
+    with pytest.raises(IncompleteContributionDataError, match="2025-02"):
+        client.fetch_monthly_commit_counts(
+            "me", date(2025, 1, 1), date(2025, 2, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
         )

@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -9,6 +11,13 @@ from githubactivitychart.cli import (
     render_outputs_atomically,
     resolve_end_month,
 )
+
+
+def test_cli_import_does_not_load_matplotlib() -> None:
+    subprocess.run(
+        [sys.executable, "-c", "import sys; import githubactivitychart.cli; assert 'matplotlib' not in sys.modules"],
+        check=True,
+    )
 
 
 def test_parse_month_is_strict_and_rejects_pre_github_dates() -> None:
@@ -44,9 +53,11 @@ def test_parser_rejects_invalid_contribution_repository_limit() -> None:
 
 def fake_renderer_that_writes(render_calls):
     def fake_renderer(**kwargs):
-        render_calls.append(kwargs)
-        kwargs["output_path"].write_bytes(b"rendered")
-        return kwargs["output_path"]
+        output_paths = kwargs.pop("output_paths")
+        for output_path in output_paths:
+            render_calls.append({**kwargs, "output_path": output_path})
+            output_path.write_bytes(b"rendered")
+        return output_paths
 
     return fake_renderer
 
@@ -69,7 +80,7 @@ def test_main_renders_multiple_outputs_after_single_fetch(monkeypatch, tmp_path:
     monkeypatch.setattr(cli, "GitHubClient", FakeGitHubClient)
     monkeypatch.setattr(
         cli,
-        "render_stacked_bar_chart",
+        "render_stacked_bar_charts",
         fake_renderer_that_writes(render_calls),
     )
     first_output = tmp_path / "chart.png"
@@ -124,7 +135,7 @@ def test_main_quiet_suppresses_progress_and_marks_current_month_mtd(
     monkeypatch.setattr(cli, "GitHubClient", FakeGitHubClient)
     monkeypatch.setattr(
         cli,
-        "render_stacked_bar_chart",
+        "render_stacked_bar_charts",
         fake_renderer_that_writes(render_calls),
     )
 
@@ -223,7 +234,7 @@ def test_main_discovers_and_trims_to_first_nonempty_month(
     monkeypatch.setattr(cli, "GitHubClient", FakeGitHubClient)
     monkeypatch.setattr(
         cli,
-        "render_stacked_bar_chart",
+        "render_stacked_bar_charts",
         fake_renderer_that_writes(render_calls),
     )
 
@@ -288,13 +299,14 @@ def test_atomic_render_failure_preserves_all_existing_outputs(
 
     def failing_renderer(**kwargs):
         nonlocal calls
-        calls += 1
-        kwargs["output_path"].write_bytes(b"new")
-        if calls == 2:
-            raise ValueError("second format failed")
-        return kwargs["output_path"]
+        for output_path in kwargs["output_paths"]:
+            calls += 1
+            output_path.write_bytes(b"new")
+            if calls == 2:
+                raise ValueError("second format failed")
+        return kwargs["output_paths"]
 
-    monkeypatch.setattr(cli, "render_stacked_bar_chart", failing_renderer)
+    monkeypatch.setattr(cli, "render_stacked_bar_charts", failing_renderer)
 
     with pytest.raises(ValueError, match="second format failed"):
         render_outputs_atomically(
@@ -319,7 +331,7 @@ def test_atomic_render_success_replaces_existing_outputs(
     output.write_bytes(b"old")
     monkeypatch.setattr(
         cli,
-        "render_stacked_bar_chart",
+        "render_stacked_bar_charts",
         fake_renderer_that_writes([]),
     )
 
@@ -346,7 +358,7 @@ def test_atomic_install_failure_rolls_back_already_replaced_outputs(
     second_output.write_bytes(b"old-second")
     monkeypatch.setattr(
         cli,
-        "render_stacked_bar_chart",
+        "render_stacked_bar_charts",
         fake_renderer_that_writes([]),
     )
     real_replace = cli.os.replace

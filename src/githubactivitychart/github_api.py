@@ -23,10 +23,32 @@ MAX_RETRIES = 3
 MAX_RATE_LIMIT_WAIT_SECONDS = 300
 MIN_SECONDARY_RATE_LIMIT_WAIT_SECONDS = 60
 MAX_CONTRIBUTION_REPOSITORIES = 100
+# Bound each request to six monthly collections (at most 18,600 daily nodes).
+MONTHS_PER_QUERY = 6
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 PRIVATE_REPOSITORY_LABEL = "Private repositories"
 
-MONTHLY_COMMITS_QUERY = """
+MONTHLY_REPOSITORIES_FRAGMENT = """
+fragment MonthlyRepositories on ContributionsCollection {
+  commitContributionsByRepository(maxRepositories: $maxRepositories) {
+    repository {
+      nameWithOwner
+      isPrivate
+    }
+    contributions(first: 31) {
+      pageInfo {
+        hasNextPage
+      }
+      nodes {
+        commitCount
+      }
+    }
+  }
+}
+""".strip()
+
+MONTHLY_COMMITS_QUERY = (
+    """
 query MonthlyCommitContributions(
   $username: String!
   $from: DateTime!
@@ -35,24 +57,14 @@ query MonthlyCommitContributions(
 ) {
   user(login: $username) {
     contributionsCollection(from: $from, to: $to) {
-      commitContributionsByRepository(maxRepositories: $maxRepositories) {
-        repository {
-          nameWithOwner
-          isPrivate
-        }
-        contributions(first: 100) {
-          pageInfo {
-            hasNextPage
-          }
-          nodes {
-            commitCount
-          }
-        }
-      }
+      ...MonthlyRepositories
     }
   }
 }
 """.strip()
+    + "\n"
+    + MONTHLY_REPOSITORIES_FRAGMENT
+)
 
 
 class GitHubAPIError(RuntimeError):
@@ -479,6 +491,36 @@ class GitHubClient:
                 f"The classic GitHub token is missing scope(s) required for --include-private: {', '.join(missing)}."
             )
 
+    def _fetch_month_batch(
+        self,
+        username: str,
+        windows: list[MonthWindow],
+        max_repositories: int,
+    ) -> list[dict[str, Any]]:
+        variables: dict[str, object] = {"username": username, "maxRepositories": max_repositories}
+        if len(windows) == 1:
+            variables.update({"from": windows[0].from_datetime.isoformat(), "to": windows[0].to_datetime.isoformat()})
+            return [self.execute_graphql(MONTHLY_COMMITS_QUERY, variables)]
+
+        declarations = ["$username: String!", "$maxRepositories: Int!"]
+        selections = []
+        for index, window in enumerate(windows):
+            declarations.extend([f"$from{index}: DateTime!", f"$to{index}: DateTime!"])
+            variables[f"from{index}"] = window.from_datetime.isoformat()
+            variables[f"to{index}"] = window.to_datetime.isoformat()
+            selections.append(
+                f"month{index}: user(login: $username) {{ "
+                f"contributionsCollection(from: $from{index}, to: $to{index}) {{ ...MonthlyRepositories }} }}"
+            )
+        query = (
+            f"query MonthlyCommitContributions({', '.join(declarations)}) {{ {' '.join(selections)} }}\n"
+            + MONTHLY_REPOSITORIES_FRAGMENT
+        )
+        data = self.execute_graphql(query, variables)
+        if any(f"month{index}" not in data for index in range(len(windows))):
+            raise GitHubAPIError("GitHub returned incomplete contribution data.")
+        return [{"user": data[f"month{index}"]} for index in range(len(windows))]
+
     def fetch_monthly_commit_counts(
         self,
         username: str,
@@ -499,62 +541,77 @@ class GitHubClient:
 
         windows = iter_month_windows(start_month, end_month, now=now)
         monthly_counts: dict[date, dict[str, int]] = {}
-        for index, window in enumerate(windows, start=1):
+        for batch_start in range(0, len(windows), MONTHS_PER_QUERY):
+            batch = windows[batch_start : batch_start + MONTHS_PER_QUERY]
             if progress_callback is not None:
-                progress_callback(f"Fetching contribution data for {window.month_start:%Y-%m} ({index}/{len(windows)})")
-            data = self.execute_graphql(
-                MONTHLY_COMMITS_QUERY,
-                {
-                    "username": username,
-                    "from": window.from_datetime.isoformat(),
-                    "to": window.to_datetime.isoformat(),
-                    "maxRepositories": max_contribution_repositories,
-                },
-            )
-            user = data.get("user")
-            if user is None:
-                raise GitHubAPIError(f"GitHub user `{username}` was not found.")
-            try:
-                repositories = user["contributionsCollection"]["commitContributionsByRepository"]
-            except (KeyError, TypeError) as exc:
-                raise GitHubAPIError("GitHub returned incomplete contribution data.") from exc
-            if not isinstance(repositories, list):
-                raise GitHubAPIError("GitHub returned malformed contribution repository data.")
-            if len(repositories) >= max_contribution_repositories:
-                raise IncompleteContributionDataError(
-                    "GitHub contribution data reached the repository limit "
-                    f"({max_contribution_repositories}) for "
-                    f"{window.month_start:%Y-%m}. No chart was written because "
-                    "the result may be incomplete."
+                for index, window in enumerate(batch, start=batch_start + 1):
+                    progress_callback(
+                        f"Fetching contribution data for {window.month_start:%Y-%m} ({index}/{len(windows)})"
+                    )
+            results = self._fetch_month_batch(username, batch, max_contribution_repositories)
+            for window, data in zip(batch, results, strict=True):
+                monthly_counts[window.month_start] = self._parse_month_counts(
+                    data,
+                    username,
+                    window.month_start,
+                    max_contribution_repositories,
+                    include_private,
+                    show_private_names,
                 )
 
-            month_totals: dict[str, int] = {}
-            for repository_entry in repositories:
-                try:
-                    repository = repository_entry["repository"]
-                    is_private = bool(repository["isPrivate"])
-                    repository_name = str(repository["nameWithOwner"])
-                    contributions = repository_entry["contributions"]
-                    if contributions["pageInfo"]["hasNextPage"]:
-                        raise IncompleteContributionDataError(
-                            "GitHub contribution entries reached the per-repository "
-                            f"limit for {window.month_start:%Y-%m}. No chart was "
-                            "written because the result may be incomplete."
-                        )
-                    nodes = contributions["nodes"]
-                    commit_total = sum(int(node["commitCount"]) for node in nodes)
-                except IncompleteContributionDataError:
-                    raise
-                except (KeyError, TypeError, ValueError) as exc:
-                    raise GitHubAPIError("GitHub returned malformed contribution data.") from exc
-                if commit_total <= 0 or (is_private and not include_private):
-                    continue
-                if is_private and not show_private_names:
-                    repository_name = PRIVATE_REPOSITORY_LABEL
-                month_totals[repository_name] = month_totals.get(repository_name, 0) + commit_total
-            monthly_counts[window.month_start] = month_totals
-
         return monthly_counts
+
+    @staticmethod
+    def _parse_month_counts(
+        data: dict[str, Any],
+        username: str,
+        month: date,
+        max_contribution_repositories: int,
+        include_private: bool,
+        show_private_names: bool,
+    ) -> dict[str, int]:
+        user = data.get("user")
+        if user is None:
+            raise GitHubAPIError(f"GitHub user `{username}` was not found.")
+        try:
+            repositories = user["contributionsCollection"]["commitContributionsByRepository"]
+        except (KeyError, TypeError) as exc:
+            raise GitHubAPIError("GitHub returned incomplete contribution data.") from exc
+        if not isinstance(repositories, list):
+            raise GitHubAPIError("GitHub returned malformed contribution repository data.")
+        if len(repositories) >= max_contribution_repositories:
+            raise IncompleteContributionDataError(
+                "GitHub contribution data reached the repository limit "
+                f"({max_contribution_repositories}) for "
+                f"{month:%Y-%m}. No chart was written because "
+                "the result may be incomplete."
+            )
+
+        month_totals: dict[str, int] = {}
+        for repository_entry in repositories:
+            try:
+                repository = repository_entry["repository"]
+                is_private = bool(repository["isPrivate"])
+                repository_name = str(repository["nameWithOwner"])
+                contributions = repository_entry["contributions"]
+                if contributions["pageInfo"]["hasNextPage"]:
+                    raise IncompleteContributionDataError(
+                        "GitHub contribution entries reached the per-repository "
+                        f"limit for {month:%Y-%m}. No chart was "
+                        "written because the result may be incomplete."
+                    )
+                nodes = contributions["nodes"]
+                commit_total = sum(int(node["commitCount"]) for node in nodes)
+            except IncompleteContributionDataError:
+                raise
+            except (KeyError, TypeError, ValueError) as exc:
+                raise GitHubAPIError("GitHub returned malformed contribution data.") from exc
+            if commit_total <= 0 or (is_private and not include_private):
+                continue
+            if is_private and not show_private_names:
+                repository_name = PRIVATE_REPOSITORY_LABEL
+            month_totals[repository_name] = month_totals.get(repository_name, 0) + commit_total
+        return month_totals
 
 
 GitHubGraphQLClient = GitHubClient

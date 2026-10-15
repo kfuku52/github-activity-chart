@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
+from matplotlib.figure import Figure
 
 from githubactivitychart import plotting
 from githubactivitychart.plotting import (
@@ -13,6 +14,7 @@ from githubactivitychart.plotting import (
     _series_style,
     collapse_repositories,
     render_stacked_bar_chart,
+    render_stacked_bar_charts,
 )
 
 
@@ -209,7 +211,7 @@ def test_render_includes_month_to_date_annotation(tmp_path: Path) -> None:
 
 def test_render_wraps_save_failures_as_chart_errors(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
-        plotting.Figure,
+        Figure,
         "savefig",
         lambda *args, **kwargs: (_ for _ in ()).throw(OSError("disk full")),
     )
@@ -234,3 +236,43 @@ def test_default_limit_keeps_large_chart_dimensions_bounded(tmp_path: Path) -> N
         width, height = image.size
     assert width <= 4000
     assert height <= 760
+
+
+@pytest.mark.parametrize("suffixes", [("png", "pdf", "svg"), ("svg", "pdf", "png"), ("png", "png")])
+def test_multiple_exports_match_independently_rendered_charts(tmp_path: Path, suffixes) -> None:
+    paths = [tmp_path / f"shared-{index}.{suffix}" for index, suffix in enumerate(suffixes)]
+    counts = sample_counts()
+    counts[date(2026, 3, 1)] = {"repo-c": 1}
+    as_of = datetime(2026, 3, 10, tzinfo=UTC)
+
+    assert render_stacked_bar_charts(counts, "octocat", paths, as_of=as_of) == paths
+
+    for index, suffix in enumerate(suffixes):
+        separate = tmp_path / f"separate-{index}.{suffix}"
+        render_stacked_bar_chart(counts, "octocat", separate, as_of=as_of)
+        assert paths[index].read_bytes() == separate.read_bytes()
+
+
+def test_multiple_exports_build_figure_once(monkeypatch, tmp_path: Path) -> None:
+    original = plotting._build_chart_figure
+    figures = []
+
+    def build(*args, **kwargs):
+        figure = original(*args, **kwargs)
+        figures.append(figure)
+        return figure
+
+    monkeypatch.setattr(plotting, "_build_chart_figure", build)
+    paths = [tmp_path / f"chart.{suffix}" for suffix in ("png", "pdf", "svg")]
+    render_stacked_bar_charts(sample_counts(), "octocat", paths)
+
+    assert len(figures) == 1
+    assert not figures[0].axes
+
+
+def test_multiple_exports_validate_all_suffixes_before_writing(tmp_path: Path) -> None:
+    paths = [tmp_path / "valid.pdf", tmp_path / "invalid.jpg"]
+    with pytest.raises(ChartRenderError, match="Unsupported"):
+        render_stacked_bar_charts(sample_counts(), "octocat", paths)
+    assert not paths[0].exists()
+    assert render_stacked_bar_charts(sample_counts(), "octocat", []) == []

@@ -36,30 +36,7 @@ jobs:
       - name: Generate public charts
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          read -r FROM_MONTH TO_MONTH < <(
-            python - <<'PY'
-          from datetime import UTC, datetime
-
-          now = datetime.now(UTC)
-          end_month_index = now.year * 12 + now.month - 2
-          start_month_index = end_month_index - 35
-          end_year, end_month = divmod(end_month_index, 12)
-          start_year, start_month = divmod(start_month_index, 12)
-          print(
-              f"{start_year:04d}-{start_month + 1:02d} "
-              f"{end_year:04d}-{end_month + 1:02d}"
-          )
-          PY
-          )
-          github-activity-chart kfuku52 \
-            --to "${TO_MONTH}" \
-            --output output/kfuku52_all_months.png \
-            --output output/kfuku52_all_months.pdf
-          github-activity-chart kfuku52 \
-            --from "${FROM_MONTH}" \
-            --to "${TO_MONTH}" \
-            --output output/kfuku52_last_36_months.svg
+        run: python -m githubactivitychart.update_charts
 
       - name: Upload generated charts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
