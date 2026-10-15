@@ -1,0 +1,167 @@
+{
+  "before_commit": "2165012a4e44a51868d20ad2d9acf5695baf0081",
+  "after_version": "0.2.7",
+  "environment": {
+    "python": "3.12.14",
+    "platform": "macOS 27.0.1 arm64",
+    "matplotlib": "3.11.1",
+    "dependencies": "requirements/dev.lock"
+  },
+  "measurement": {
+    "warmups": 1,
+    "repeats": 3,
+    "months": 120,
+    "repositories": 40,
+    "active_per_month": 10,
+    "top_repositories": 20,
+    "primary_time_metric": "process CPU seconds",
+    "rss_measured_before_tracemalloc": true
+  },
+  "three_formats": {
+    "before": {
+      "render_cpu_seconds": [
+        2.9148870000000002,
+        2.878947,
+        2.9456369999999996
+      ],
+      "render_cpu_median_seconds": 2.9148870000000002,
+      "render_seconds": [
+        3.040924832923338,
+        3.430873416014947,
+        3.316857040976174
+      ],
+      "render_median_seconds": 3.316857040976174,
+      "peak_rss_mib": 131.578125,
+      "peak_python_allocations_mib": 27.462255477905273,
+      "output_sha256": {
+        ".png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+        ".pdf": "8c3e7dd996cecbbe12d8994b183247ff8190a6d3ed42e1bf7bd9b6137099dead",
+        ".svg": "7002cf737263a067e4b181df21898c46d4d3cb0877ecc38926e43694897af297"
+      }
+    },
+    "after": {
+      "render_cpu_seconds": [
+        1.3668049999999998,
+        1.381278,
+        1.4513119999999997
+      ],
+      "render_cpu_median_seconds": 1.381278,
+      "render_seconds": [
+        1.3989609170239419,
+        1.4120281659998,
+        1.601560749928467
+      ],
+      "render_median_seconds": 1.4120281659998,
+      "peak_rss_mib": 104.765625,
+      "peak_python_allocations_mib": 4.051013946533203,
+      "output_sha256": {
+        ".png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+        ".pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+        ".svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+      }
+    }
+  },
+  "three_png_destinations": {
+    "before": {
+      "render_cpu_seconds": [
+        4.5376270000000005,
+        4.299617,
+        4.521717000000001
+      ],
+      "render_cpu_median_seconds": 4.521717000000001,
+      "render_seconds": [
+        4.974833916989155,
+        4.416061833035201,
+        4.863334540976211
+      ],
+      "render_median_seconds": 4.863334540976211,
+      "peak_rss_mib": 118.078125,
+      "peak_python_allocations_mib": null,
+      "output_sha256": {
+        ".png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566"
+      }
+    },
+    "after": {
+      "render_cpu_seconds": [
+        1.0974000000000002,
+        1.096143,
+        1.077343
+      ],
+      "render_cpu_median_seconds": 1.096143,
+      "render_seconds": [
+        1.1643757079727948,
+        1.2028214579913765,
+        1.107531625078991
+      ],
+      "render_median_seconds": 1.1643757079727948,
+      "peak_rss_mib": 93.625,
+      "peak_python_allocations_mib": null,
+      "output_sha256": {
+        ".png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566"
+      }
+    }
+  },
+  "public_api_2026_january_september": {
+    "before": {
+      "seconds": [
+        2.512306832941249,
+        2.7688205420272425,
+        2.35227912501432
+      ],
+      "median_seconds": 2.512306832941249,
+      "graphql_calls": [
+        2,
+        2,
+        2
+      ],
+      "response_json_bytes": [
+        24023,
+        24023,
+        24023
+      ],
+      "counts_sha256": "f3621c3498e094aa453832728573c687cb5956a385e1374493fec9abbdca53a1"
+    },
+    "after": {
+      "seconds": [
+        2.5853071250021458,
+        2.4050159589387476,
+        2.2684540830086917
+      ],
+      "median_seconds": 2.4050159589387476,
+      "graphql_calls": [
+        2,
+        2,
+        2
+      ],
+      "response_json_bytes": [
+        10887,
+        10887,
+        10887
+      ],
+      "counts_sha256": "f3621c3498e094aa453832728573c687cb5956a385e1374493fec9abbdca53a1"
+    }
+  },
+  "visual_equivalence": {
+    "cases": [
+      "long-history",
+      "gaps",
+      "all-repositories",
+      "labels-mtd"
+    ],
+    "pdf_raster_dpi": 200,
+    "matplotlib_versions": [
+      "3.8.0",
+      "3.11.1"
+    ],
+    "png_pixels_identical": true,
+    "pdf_pixels_identical": true,
+    "svg_bar_coordinates_and_resolved_styles_identical": true
+  },
+  "mixed_error_simulation": {
+    "before_http_attempts": 16,
+    "after_http_attempts": 4,
+    "before_requested_sleep_seconds": 448,
+    "after_requested_sleep_seconds": 7,
+    "sleep_was_simulated": true
+  }
+}

@@ -22,6 +22,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--formats", nargs="+", choices=("png", "pdf", "svg"), default=["png", "pdf", "svg"])
+    parser.add_argument("--memory", action="store_true", help="Measure Python allocations in a separate untimed render")
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
@@ -35,7 +37,11 @@ def main() -> None:
             for repository in range(40)
             if (index + repository) % 4 == 0
         }
-    outputs = [args.output_dir / f"chart.{suffix}" for suffix in ("png", "pdf", "svg")]
+    repeated_formats = len(set(args.formats)) != len(args.formats)
+    outputs = [
+        args.output_dir / (f"chart-{index}.{suffix}" if repeated_formats else f"chart.{suffix}")
+        for index, suffix in enumerate(args.formats)
+    ]
     render_times = []
     render_cpu_times = []
     for iteration in range(args.repeats + 1):
@@ -73,12 +79,30 @@ def main() -> None:
             )
 
     peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    peak_python_bytes = None
+    if args.memory:
+        import tracemalloc
+
+        gc.collect()
+        tracemalloc.start()
+        try:
+            render_outputs_atomically(
+                monthly_counts=counts,
+                username="benchmark",
+                output_paths=outputs,
+                top_repos=20,
+                as_of=None,
+            )
+            _, peak_python_bytes = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
     print(
         json.dumps(
             {
                 "python": platform.python_version(),
                 "platform": platform.platform(),
-                "workload": "120 months, 40 repositories (10 active/month), top 20, PNG+PDF+SVG",
+                "workload": f"120 months, 40 repositories (10 active/month), top 20, {'+'.join(args.formats).upper()}",
+                "formats": args.formats,
                 "render_seconds": render_times,
                 "render_median_seconds": statistics.median(render_times),
                 "render_cpu_seconds": render_cpu_times,
@@ -88,7 +112,9 @@ def main() -> None:
                 "help_cpu_seconds": help_cpu_times,
                 "help_cpu_median_seconds": statistics.median(help_cpu_times),
                 "peak_rss_mib": peak_rss / (1024 * 1024 if sys.platform == "darwin" else 1024),
+                "peak_python_allocations_mib": None if peak_python_bytes is None else peak_python_bytes / 1024**2,
                 "output_sha256": {path.suffix: hashlib.sha256(path.read_bytes()).hexdigest() for path in outputs},
+                "output_files_sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in outputs},
             },
             indent=2,
         )

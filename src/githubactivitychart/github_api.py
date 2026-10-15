@@ -23,7 +23,7 @@ MAX_RETRIES = 3
 MAX_RATE_LIMIT_WAIT_SECONDS = 300
 MIN_SECONDARY_RATE_LIMIT_WAIT_SECONDS = 60
 MAX_CONTRIBUTION_REPOSITORIES = 100
-# Bound each request to six monthly collections (at most 18,600 daily nodes).
+# Bound server work while avoiding daily contribution nodes in the response.
 MONTHS_PER_QUERY = 6
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 PRIVATE_REPOSITORY_LABEL = "Private repositories"
@@ -35,13 +35,8 @@ fragment MonthlyRepositories on ContributionsCollection {
       nameWithOwner
       isPrivate
     }
-    contributions(first: 31) {
-      pageInfo {
-        hasNextPage
-      }
-      nodes {
-        commitCount
-      }
+    contributions {
+      totalCount
     }
   }
 }
@@ -210,6 +205,13 @@ def resolve_github_token() -> str:
 
 
 class GitHubClient:
+    """Fetch GitHub data with a retry budget shared by HTTP and GraphQL errors.
+
+    ``max_retries`` permits that many retries per logical API request, regardless
+    of the error layer. ``max_rate_limit_wait_seconds`` bounds cumulative
+    rate-limit sleeps for that request; server retry delays are never shortened.
+    """
+
     def __init__(
         self,
         token: str,
@@ -297,8 +299,10 @@ class GitHubClient:
         description: str,
         response: requests.Response,
         delay_seconds: float,
+        remaining_wait_seconds: float | None = None,
     ) -> None:
-        if delay_seconds > self._max_rate_limit_wait_seconds:
+        wait_limit = self._max_rate_limit_wait_seconds if remaining_wait_seconds is None else remaining_wait_seconds
+        if delay_seconds > wait_limit:
             reset = response.headers.get("X-RateLimit-Reset")
             reset_detail = ""
             if reset is not None:
@@ -318,8 +322,12 @@ class GitHubClient:
         self,
         request: Callable[[], requests.Response],
         description: str,
+        *,
+        rate_limit_check: Callable[[requests.Response], bool] | None = None,
     ) -> requests.Response:
         last_transport_error: requests.RequestException | None = None
+        remaining_wait_seconds = self._max_rate_limit_wait_seconds
+        rate_limit_attempt = 0
         for attempt in range(self._max_retries + 1):
             try:
                 response = request()
@@ -330,24 +338,31 @@ class GitHubClient:
                 self._sleep(self._transient_backoff_delay(attempt))
                 continue
 
+            payload_rate_limited = (
+                response.status_code == 200 and rate_limit_check is not None and rate_limit_check(response)
+            )
             if attempt >= self._max_retries:
                 return response
 
             rate_limit_delay = self._rate_limit_delay(response)
-            if rate_limit_delay is not None:
+            if payload_rate_limited:
+                rate_limit_delay = self._rate_limit_header_delay(response)
+            if (
+                rate_limit_delay is not None
+                or payload_rate_limited
+                or response.status_code == 429
+                or self._looks_like_secondary_rate_limit(response)
+            ):
+                if rate_limit_delay is None:
+                    rate_limit_delay = self._secondary_rate_limit_delay(rate_limit_attempt)
                 self._wait_or_raise(
                     description=description,
                     response=response,
                     delay_seconds=rate_limit_delay,
+                    remaining_wait_seconds=remaining_wait_seconds,
                 )
-                continue
-
-            if self._looks_like_secondary_rate_limit(response):
-                self._wait_or_raise(
-                    description=description,
-                    response=response,
-                    delay_seconds=self._secondary_rate_limit_delay(attempt),
-                )
+                remaining_wait_seconds -= rate_limit_delay
+                rate_limit_attempt += 1
                 continue
 
             if response.status_code in RETRY_STATUS_CODES:
@@ -414,47 +429,38 @@ class GitHubClient:
         query: str,
         variables: dict[str, object],
     ) -> dict[str, Any]:
-        for graphql_attempt in range(self._max_retries + 1):
-            response = self._send_with_retries(
-                lambda: self._session.post(
-                    GITHUB_GRAPHQL_URL,
-                    json={"query": query, "variables": variables},
-                    timeout=REQUEST_TIMEOUT_SECONDS,
-                ),
-                "GraphQL API",
-            )
-            if response.status_code != 200:
-                raise GitHubAPIError(
-                    f"GitHub GraphQL API returned HTTP {response.status_code}.{self._request_id(response)}"
-                )
+        payload: Any = None
+        rate_limited = False
 
+        def decode_and_check_rate_limit(response: requests.Response) -> bool:
+            nonlocal payload, rate_limited
             payload = self._decode_json(response, "GraphQL API")
-            if self._graphql_rate_limited(payload):
-                if graphql_attempt >= self._max_retries:
-                    raise GitHubAPIError(
-                        f"GitHub GraphQL API remained rate limited after retries.{self._request_id(response)}"
-                    )
-                delay = self._rate_limit_header_delay(response)
-                if delay is None:
-                    delay = self._secondary_rate_limit_delay(graphql_attempt)
-                self._wait_or_raise(
-                    description="GraphQL API",
-                    response=response,
-                    delay_seconds=delay,
-                )
-                continue
+            rate_limited = self._graphql_rate_limited(payload)
+            return rate_limited
 
-            if not isinstance(payload, dict):
-                raise GitHubAPIError("GitHub GraphQL API returned an unexpected response body.")
-            errors = payload.get("errors")
-            if errors:
-                raise GitHubAPIError(f"GitHub GraphQL API rejected the contribution query.{self._request_id(response)}")
-            data = payload.get("data")
-            if not isinstance(data, dict):
-                raise GitHubAPIError("GitHub GraphQL API returned an unexpected response body.")
-            return data
-
-        raise AssertionError("GraphQL retry loop terminated unexpectedly.")
+        response = self._send_with_retries(
+            lambda: self._session.post(
+                GITHUB_GRAPHQL_URL,
+                json={"query": query, "variables": variables},
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            ),
+            "GraphQL API",
+            rate_limit_check=decode_and_check_rate_limit,
+        )
+        if response.status_code != 200:
+            raise GitHubAPIError(
+                f"GitHub GraphQL API returned HTTP {response.status_code}.{self._request_id(response)}"
+            )
+        if rate_limited:
+            raise GitHubAPIError(f"GitHub GraphQL API remained rate limited after retries.{self._request_id(response)}")
+        if not isinstance(payload, dict):
+            raise GitHubAPIError("GitHub GraphQL API returned an unexpected response body.")
+        if payload.get("errors"):
+            raise GitHubAPIError(f"GitHub GraphQL API rejected the contribution query.{self._request_id(response)}")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise GitHubAPIError("GitHub GraphQL API returned an unexpected response body.")
+        return data
 
     def fetch_user_created_at(self, username: str) -> datetime:
         escaped_username = quote(username, safe="")
@@ -593,17 +599,9 @@ class GitHubClient:
                 repository = repository_entry["repository"]
                 is_private = bool(repository["isPrivate"])
                 repository_name = str(repository["nameWithOwner"])
-                contributions = repository_entry["contributions"]
-                if contributions["pageInfo"]["hasNextPage"]:
-                    raise IncompleteContributionDataError(
-                        "GitHub contribution entries reached the per-repository "
-                        f"limit for {month:%Y-%m}. No chart was "
-                        "written because the result may be incomplete."
-                    )
-                nodes = contributions["nodes"]
-                commit_total = sum(int(node["commitCount"]) for node in nodes)
-            except IncompleteContributionDataError:
-                raise
+                commit_total = repository_entry["contributions"]["totalCount"]
+                if isinstance(commit_total, bool) or not isinstance(commit_total, int) or commit_total < 0:
+                    raise ValueError("Contribution totals must be non-negative integers.")
             except (KeyError, TypeError, ValueError) as exc:
                 raise GitHubAPIError("GitHub returned malformed contribution data.") from exc
             if commit_total <= 0 or (is_private and not include_private):

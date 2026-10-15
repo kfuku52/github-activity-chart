@@ -42,10 +42,7 @@ def contribution_payload(
                             "nameWithOwner": name,
                             "isPrivate": is_private,
                         },
-                        "contributions": {
-                            "pageInfo": {"hasNextPage": False},
-                            "nodes": [{"commitCount": commit_count} for commit_count in commit_counts],
-                        },
+                        "contributions": {"totalCount": sum(commit_counts)},
                     }
                     for name, is_private, commit_counts in entries
                 ]
@@ -340,6 +337,97 @@ def test_execute_graphql_rate_limit_exhaustion_is_typed(monkeypatch) -> None:
         client.execute_graphql("query {}", {})
 
 
+def test_graphql_http_transport_and_payload_failures_share_retry_budget(monkeypatch) -> None:
+    sleeps = []
+    client = GitHubClient("dummy-token", sleep=sleeps.append, random_uniform=lambda low, high: 0.0)
+    responses = [
+        make_response(503),
+        make_response(200, payload={"errors": [{"type": "RATE_LIMITED"}]}),
+        requests.Timeout("slow"),
+        make_response(200, payload={"data": {"ok": True}}),
+    ]
+    calls = []
+
+    def post(*args, **kwargs):
+        calls.append(1)
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(client._session, "post", post)
+    assert client.execute_graphql("query {}", {}) == {"ok": True}
+    assert len(calls) == 4
+    assert sleeps == [1.0, 60.0, 4.0]
+
+
+def test_mixed_graphql_exhaustion_never_multiplies_http_attempts(monkeypatch) -> None:
+    sleeps = []
+    client = GitHubClient("dummy-token", sleep=sleeps.append, random_uniform=lambda low, high: 0.0)
+    calls = []
+
+    def post(*args, **kwargs):
+        calls.append(1)
+        if len(calls) % 4:
+            return make_response(503)
+        return make_response(200, payload={"errors": [{"type": "RATE_LIMITED"}]})
+
+    monkeypatch.setattr(client._session, "post", post)
+    with pytest.raises(GitHubAPIError, match="remained rate limited"):
+        client.execute_graphql("query {}", {})
+    assert len(calls) == 4
+    assert sleeps == [1.0, 2.0, 4.0]
+
+
+@pytest.mark.parametrize("graphql", [False, True])
+def test_rate_limit_wait_budget_is_cumulative_per_request(monkeypatch, graphql: bool) -> None:
+    sleeps = []
+    calls = []
+    client = GitHubClient("dummy-token", sleep=sleeps.append, max_retries=5, max_rate_limit_wait_seconds=5)
+
+    def request(*args, **kwargs):
+        calls.append(1)
+        return make_response(
+            200 if graphql else 429,
+            payload={"errors": [{"type": "RATE_LIMITED"}]},
+            headers={"Retry-After": "2"},
+        )
+
+    monkeypatch.setattr(client._session, "post" if graphql else "get", request)
+    with pytest.raises(GitHubAPIError, match="rate limit reached"):
+        if graphql:
+            client.execute_graphql("query {}", {})
+        else:
+            client.fetch_user_created_at("me")
+    assert sleeps == [2.0, 2.0]
+    assert len(calls) == 3
+
+
+def test_graphql_response_is_decoded_once(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+    response = make_response(200, payload={"data": {"ok": True}})
+    calls = []
+    decode = response.json
+
+    def json_once():
+        calls.append(1)
+        return decode()
+
+    monkeypatch.setattr(response, "json", json_once)
+    monkeypatch.setattr(client._session, "post", lambda *args, **kwargs: response)
+    assert client.execute_graphql("query {}", {}) == {"ok": True}
+    assert len(calls) == 1
+
+
+def test_headerless_429_uses_rate_limit_cooldown(monkeypatch) -> None:
+    sleeps = []
+    client = GitHubClient("dummy-token", sleep=sleeps.append, random_uniform=lambda low, high: 0.0)
+    responses = [make_response(429), make_response(200, payload={"data": {"ok": True}})]
+    monkeypatch.setattr(client._session, "post", lambda *args, **kwargs: responses.pop(0))
+    assert client.execute_graphql("query {}", {}) == {"ok": True}
+    assert sleeps == [60.0]
+
+
 @pytest.mark.parametrize(
     ("response", "message"),
     [
@@ -568,22 +656,31 @@ def test_fetch_monthly_counts_fails_at_repository_cap(monkeypatch) -> None:
         )
 
 
-def test_fetch_monthly_counts_fails_when_repository_entries_are_paginated(
-    monkeypatch,
-) -> None:
+@pytest.mark.parametrize("total", [None, "10", 1.5, True, -1])
+def test_fetch_monthly_counts_rejects_invalid_aggregate(monkeypatch, total) -> None:
     client = GitHubClient("dummy-token")
     payload = contribution_payload([("other/busy-repo", False, [100])])
-    repository_entry = payload["user"]["contributionsCollection"]["commitContributionsByRepository"][0]
-    repository_entry["contributions"]["pageInfo"]["hasNextPage"] = True
+    entry = payload["user"]["contributionsCollection"]["commitContributionsByRepository"][0]
+    entry["contributions"]["totalCount"] = total
     monkeypatch.setattr(client, "execute_graphql", lambda *args: payload)
-
-    with pytest.raises(IncompleteContributionDataError, match="per-repository"):
+    with pytest.raises(GitHubAPIError, match="malformed contribution"):
         client.fetch_monthly_commit_counts(
-            "me",
-            date(2026, 1, 1),
-            date(2026, 1, 1),
-            now=datetime(2026, 2, 1, tzinfo=UTC),
+            "me", date(2026, 1, 1), date(2026, 1, 1), now=datetime(2026, 2, 1, tzinfo=UTC)
         )
+
+
+def test_fetch_monthly_counts_uses_full_aggregate_without_daily_nodes(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+
+    def execute(query, variables):
+        assert "totalCount" in query
+        assert "nodes" not in query and "pageInfo" not in query
+        return contribution_payload([("me/busy-repo", False, [1000, 2000])])
+
+    monkeypatch.setattr(client, "execute_graphql", execute)
+    assert client.fetch_monthly_commit_counts(
+        "me", date(2026, 1, 1), date(2026, 1, 1), now=datetime(2026, 2, 1, tzinfo=UTC)
+    ) == {date(2026, 1, 1): {"me/busy-repo": 3000}}
 
 
 def test_fetch_monthly_counts_rejects_private_names_without_private_mode() -> None:
@@ -658,7 +755,7 @@ def test_month_batches_preserve_every_month_and_cap_current_month(monkeypatch, m
 
     def fake_execute(query, variables):
         calls.append(variables)
-        assert "contributions(first: 31)" in query
+        assert "totalCount" in query and "nodes" not in query
         starts = sorted(key for key in variables if key.startswith("from"))
         result = {}
         for index, key in enumerate(starts):
@@ -694,11 +791,9 @@ def test_month_batch_rejects_incomplete_later_month(monkeypatch) -> None:
     client = GitHubClient("dummy-token")
     payload = contribution_payload([("me/repo", False, [1])])["user"]
     incomplete = contribution_payload([("me/repo", False, [2])])["user"]
-    incomplete["contributionsCollection"]["commitContributionsByRepository"][0]["contributions"]["pageInfo"][
-        "hasNextPage"
-    ] = True
+    del incomplete["contributionsCollection"]["commitContributionsByRepository"][0]["contributions"]["totalCount"]
     monkeypatch.setattr(client, "execute_graphql", lambda *args: {"month0": payload, "month1": incomplete})
-    with pytest.raises(IncompleteContributionDataError, match="2025-02"):
+    with pytest.raises(GitHubAPIError, match="malformed contribution"):
         client.fetch_monthly_commit_counts(
             "me", date(2025, 1, 1), date(2025, 2, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
         )

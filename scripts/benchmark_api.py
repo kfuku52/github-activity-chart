@@ -25,6 +25,16 @@ def main() -> None:
     client = GitHubClient.from_environment()
     execute = client.execute_graphql
     calls = 0
+    response_bytes = 0
+    post = client._session.post
+
+    def measured_post(*args, **kwargs):
+        nonlocal response_bytes
+        response = post(*args, **kwargs)
+        response_bytes += len(response.content)
+        return response
+
+    client._session.post = measured_post
 
     def counted_execute(query, variables):
         nonlocal calls
@@ -36,13 +46,16 @@ def main() -> None:
     client.fetch_monthly_commit_counts(args.username, args.start, args.start, now=now)
     times = []
     request_counts = []
+    response_sizes = []
     digest = None
     for _ in range(args.repeats):
         calls = 0
+        response_bytes = 0
         started = time.perf_counter()
         counts = client.fetch_monthly_commit_counts(args.username, args.start, args.end, now=now)
         times.append(time.perf_counter() - started)
         request_counts.append(calls)
+        response_sizes.append(response_bytes)
         current_digest = hashlib.sha256(
             json.dumps({month.isoformat(): repos for month, repos in counts.items()}, sort_keys=True).encode()
         ).hexdigest()
@@ -55,6 +68,7 @@ def main() -> None:
                 "seconds": times,
                 "median_seconds": statistics.median(times),
                 "graphql_calls": request_counts,
+                "response_json_bytes": response_sizes,
                 "counts_sha256": digest,
             },
             indent=2,

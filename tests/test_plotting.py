@@ -276,3 +276,73 @@ def test_multiple_exports_validate_all_suffixes_before_writing(tmp_path: Path) -
         render_stacked_bar_charts(sample_counts(), "octocat", paths)
     assert not paths[0].exists()
     assert render_stacked_bar_charts(sample_counts(), "octocat", []) == []
+
+
+def test_chart_batches_rectangles_and_preserves_zero_height_outlines() -> None:
+    counts = {date(2026, 1, 1): {"repo-a": 2}, date(2026, 2, 1): {"repo-b": 3}}
+    figure = plotting._build_chart_figure(counts, "octocat")
+    try:
+        axis = figure.axes[0]
+        assert not axis.patches
+        assert len(axis.collections) == 2
+        assert all(not collection.get_in_layout() for collection in axis.collections)
+        paths = [path for collection in axis.collections for path in collection.get_paths()]
+        assert len(paths) == 4
+        assert sum(path.vertices[:, 1].max() == path.vertices[:, 1].min() for path in paths) == 2
+        assert [text.get_text() for text in axis.get_legend().texts] == ["repo-b (3)", "repo-a (2)"]
+    finally:
+        figure.clear()
+
+
+def test_repeated_formats_are_encoded_once(monkeypatch, tmp_path: Path) -> None:
+    save = Figure.savefig
+    formats = []
+
+    def record_save(*args, **kwargs):
+        formats.append(kwargs["format"])
+        return save(*args, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", record_save)
+    paths = [tmp_path / name for name in ("a.png", "nested/b.PNG", "c.pdf", "d.pdf", "e.svg", "f.svg")]
+    render_stacked_bar_charts(sample_counts(), "octocat", paths)
+    assert formats == ["png", "pdf", "svg"]
+    for first, second in zip(paths[::2], paths[1::2], strict=True):
+        assert first.read_bytes() == second.read_bytes()
+
+
+def test_repeated_same_path_and_hard_links_are_supported(tmp_path: Path) -> None:
+    first = tmp_path / "first.png"
+    second = tmp_path / "second.png"
+    first.write_bytes(b"old")
+    second.hardlink_to(first)
+    render_stacked_bar_charts(sample_counts(), "octocat", [first, first, second])
+    assert first.read_bytes().startswith(b"\x89PNG")
+    assert first.read_bytes() == second.read_bytes()
+
+
+def test_copy_failure_clears_figure_and_preserves_existing_outputs(monkeypatch, tmp_path: Path) -> None:
+    from githubactivitychart.cli import render_outputs_atomically
+
+    paths = [tmp_path / "first.png", tmp_path / "second.png"]
+    for path in paths:
+        path.write_bytes(b"old")
+    figures = []
+    build = plotting._build_chart_figure
+
+    def record_build(*args, **kwargs):
+        figure = build(*args, **kwargs)
+        figures.append(figure)
+        return figure
+
+    def fail_copy(*args):
+        raise OSError("copy failed")
+
+    monkeypatch.setattr(plotting, "_build_chart_figure", record_build)
+    monkeypatch.setattr(plotting.shutil, "copyfile", fail_copy)
+    with pytest.raises(ChartRenderError, match="copy failed"):
+        render_outputs_atomically(
+            monthly_counts=sample_counts(), username="octocat", output_paths=paths, top_repos=20, as_of=None
+        )
+    assert all(path.read_bytes() == b"old" for path in paths)
+    assert len(figures) == 1 and not figures[0].axes
+    assert not list(tmp_path.glob(".*.tmp.*"))

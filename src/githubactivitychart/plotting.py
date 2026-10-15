@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 from collections import defaultdict
 from contextlib import nullcontext
 from datetime import UTC, date, datetime
@@ -177,7 +178,9 @@ def _build_chart_figure(
     as_of: datetime | None = None,
 ) -> Figure:
     from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.collections import PolyCollection
     from matplotlib.figure import Figure
+    from matplotlib.patches import Patch
     from matplotlib.ticker import MaxNLocator
 
     if not isinstance(username, str) or not username.strip():
@@ -212,19 +215,35 @@ def _build_chart_figure(
 
     try:
         axis = figure.subplots()
+        legend_handles = []
         for repository in repositories:
             heights = [normalized_counts[month].get(repository, 0) for month in months]
             color, hatch = _series_style(repository)
-            axis.bar(
-                x_positions,
-                heights,
-                bottom=stacked_base,
-                label=_legend_label(repository, repository_totals[repository]),
-                color=color,
+            # Keep zero-height outlines, but avoid one Artist per rectangle.
+            vertices = [
+                [(x - 0.41, base), (x - 0.41 + 0.82, base), (x - 0.41 + 0.82, base + height), (x - 0.41, base + height)]
+                for x, height, base in zip(x_positions, heights, stacked_base, strict=True)
+            ]
+            collection = PolyCollection(
+                vertices,
+                facecolors=color,
                 hatch=hatch,
-                edgecolor="#222222",
-                linewidth=0.25,
-                width=0.82,
+                edgecolors="#222222",
+                linewidths=0.25,
+                joinstyle="miter",
+                capstyle="butt",
+                antialiaseds=True,
+                in_layout=False,
+            )
+            axis.add_collection(collection)
+            legend_handles.append(
+                Patch(
+                    facecolor=color,
+                    hatch=hatch,
+                    edgecolor="#222222",
+                    linewidth=0.25,
+                    label=_legend_label(repository, repository_totals[repository]),
+                )
             )
             stacked_base = [base + height for base, height in zip(stacked_base, heights, strict=True)]
 
@@ -254,6 +273,7 @@ def _build_chart_figure(
         axis.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.4)
         axis.set_axisbelow(True)
         axis.legend(
+            handles=legend_handles,
             title="Repository (Total contributions)",
             bbox_to_anchor=(1.01, 1),
             loc="upper left",
@@ -293,9 +313,20 @@ def render_stacked_bar_charts(
     figure = _build_chart_figure(monthly_counts, username, top_repos, as_of)
     axis = figure.axes[0]
     initial_position = axis.get_position().frozen()
+    rendered_formats: dict[str, Path] = {}
     try:
         for output_path in output_paths:
             suffix = output_path.suffix.casefold()
+            if suffix in rendered_formats:
+                source = rendered_formats[suffix]
+                if output_path != source:
+                    try:
+                        output_path.parent.mkdir(parents=True, exist_ok=True)
+                        if not output_path.exists() or not source.samefile(output_path):
+                            shutil.copyfile(source, output_path)
+                    except OSError as exc:
+                        raise ChartRenderError(f"Could not render `{output_path}`: {exc}") from exc
+                continue
             # Each backend must start from the same geometry as a fresh figure.
             axis.set_position(initial_position)
             axis.set_in_layout(True)
@@ -312,6 +343,7 @@ def render_stacked_bar_charts(
                         bbox_inches="tight",
                         metadata=_output_metadata(suffix),
                     )
+                rendered_formats[suffix] = output_path
             except (OSError, ValueError) as exc:
                 raise ChartRenderError(f"Could not render `{output_path}`: {exc}") from exc
     finally:

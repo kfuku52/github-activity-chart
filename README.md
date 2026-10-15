@@ -3,7 +3,7 @@
 [![CI](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/kfuku52/github-activity-chart/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.2.6-orange.svg)](src/githubactivitychart/__init__.py)
+[![Version](https://img.shields.io/badge/version-0.2.7-orange.svg)](src/githubactivitychart/__init__.py)
 
 A CLI tool that plots monthly GitHub profile-eligible commit contributions as a
 stacked bar chart split by repository.
@@ -96,7 +96,8 @@ github-activity-chart kfuku52 --output output/kfuku52_all_months.png
   user permissions and may also require organization SSO authorization.
 - Never publish private-included charts or `--show-private-names` logs to a public
   repository, public CI log, or public artifact store.
-- `--output` can be specified multiple times; GitHub data is fetched once and a single figure is exported to each path.
+- `--output` can be specified multiple times; GitHub data is fetched once and
+  each format is encoded once, then copied to additional paths of that format.
 - Supported output formats are PDF, PNG, and SVG. Every requested output is
   rendered before any destination is replaced; a failure leaves existing outputs
   intact.
