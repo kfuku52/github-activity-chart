@@ -13,9 +13,13 @@ from githubactivitychart.cli import (
 )
 
 
-def test_cli_import_does_not_load_matplotlib() -> None:
+def test_cli_import_does_not_load_rendering_or_http_dependencies() -> None:
     subprocess.run(
-        [sys.executable, "-c", "import sys; import githubactivitychart.cli; assert 'matplotlib' not in sys.modules"],
+        [
+            sys.executable,
+            "-c",
+            "import sys; import githubactivitychart.cli; assert not {'matplotlib', 'requests'} & sys.modules.keys()",
+        ],
         check=True,
     )
 

@@ -745,18 +745,23 @@ def test_fetch_monthly_counts_reports_missing_user(monkeypatch) -> None:
         )
 
 
-@pytest.mark.parametrize("months", [6, 7, 12, 13])
+@pytest.mark.parametrize("months", [1, 6, 7, 11, 12, 13, 24, 25])
 def test_month_batches_preserve_every_month_and_cap_current_month(monkeypatch, months: int) -> None:
     client = GitHubClient("dummy-token")
-    now = datetime(2026, 1, 15, 12, 30, tzinfo=UTC)
-    windows = iter_month_windows(date(2025, 1, 1), date(2026, 1, 1), now=now)[:months]
+    now = datetime(2027, 1, 15, 12, 30, tzinfo=UTC)
+    windows = iter_month_windows(date(2025, 1, 1), date(2027, 1, 1), now=now)[:months]
     calls = []
     progress = []
 
     def fake_execute(query, variables):
         calls.append(variables)
         assert "totalCount" in query and "nodes" not in query
-        starts = sorted(key for key in variables if key.startswith("from"))
+        starts = sorted(
+            (key for key in variables if key.startswith("from")),
+            key=lambda key: int(key[4:]) if key[4:] else -1,
+        )
+        assert len(starts) <= 12
+        assert variables["maxRepositories"] == 100
         result = {}
         for index, key in enumerate(starts):
             start = datetime.fromisoformat(variables[key]).date()
@@ -773,7 +778,7 @@ def test_month_batches_preserve_every_month_and_cap_current_month(monkeypatch, m
     )
 
     assert counts == {window.month_start: {"me/repo": window.month_start.month * 31} for window in windows}
-    assert len(calls) == (months + 5) // 6
+    assert len(calls) == (months + 11) // 12
     assert len(progress) == months
     assert progress[-1].endswith(f"({months}/{months})")
 
@@ -797,3 +802,111 @@ def test_month_batch_rejects_incomplete_later_month(monkeypatch) -> None:
         client.fetch_monthly_commit_counts(
             "me", date(2025, 1, 1), date(2025, 2, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
         )
+
+
+def test_year_batch_fails_closed_when_last_month_reaches_repository_cap(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+    normal = contribution_payload([("me/repo", False, [1])])["user"]
+    capped = contribution_payload([(f"me/repo-{index}", False, [1]) for index in range(100)])["user"]
+    data = {f"month{index}": normal for index in range(12)}
+    data["month11"] = capped
+    monkeypatch.setattr(client, "execute_graphql", lambda *args: data)
+
+    with pytest.raises(IncompleteContributionDataError, match="2025-12"):
+        client.fetch_monthly_commit_counts(
+            "me", date(2025, 1, 1), date(2025, 12, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+
+
+def test_year_batch_keeps_private_names_out_of_public_counts_and_progress(monkeypatch) -> None:
+    client = GitHubClient("dummy-token")
+    payload = contribution_payload([("me/public", False, [3]), ("me/sensitive-private-name", True, [9])])["user"]
+    monkeypatch.setattr(client, "execute_graphql", lambda *args: {f"month{index}": payload for index in range(12)})
+    progress = []
+
+    counts = client.fetch_monthly_commit_counts(
+        "me",
+        date(2025, 1, 1),
+        date(2025, 12, 1),
+        now=datetime(2026, 1, 1, tzinfo=UTC),
+        progress_callback=progress.append,
+    )
+
+    assert len(counts) == 12
+    assert all(repositories == {"me/public": 3} for repositories in counts.values())
+    assert len(progress) == 12
+    assert "sensitive-private-name" not in "\n".join(progress)
+
+
+def test_year_batch_keeps_shared_http_and_graphql_retry_budget(monkeypatch) -> None:
+    sleeps = []
+    client = GitHubClient("dummy-token", sleep=sleeps.append, random_uniform=lambda low, high: 0.0)
+    calls = []
+    responses = [make_response(503) for _ in range(3)] + [
+        make_response(200, payload={"errors": [{"type": "RATE_LIMITED", "message": "slow down"}]})
+    ]
+
+    def fake_post(*args, **kwargs):
+        calls.append(kwargs["json"])
+        assert "month11:" in kwargs["json"]["query"]
+        assert "month12:" not in kwargs["json"]["query"]
+        return responses.pop(0)
+
+    monkeypatch.setattr(client._session, "post", fake_post)
+    with pytest.raises(GitHubAPIError, match="remained rate limited"):
+        client.fetch_monthly_commit_counts(
+            "me", date(2025, 1, 1), date(2025, 12, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+
+    assert len(calls) == 4
+    assert all(call == calls[0] for call in calls)
+    assert sleeps == [1.0, 2.0, 4.0]
+
+
+@pytest.mark.parametrize("include_private,show_private_names", [(False, False), (True, False), (True, True)])
+def test_dense_multiyear_batches_preserve_counts_and_private_visibility(
+    monkeypatch, include_private: bool, show_private_names: bool
+) -> None:
+    client = GitHubClient("dummy-token")
+    monkeypatch.setattr(client, "validate_private_access", lambda: None)
+    now = datetime(2026, 1, 15, 12, 30, tzinfo=UTC)
+    windows = iter_month_windows(date(2024, 1, 1), date(2026, 1, 1), now=now)
+    calls = []
+
+    def fake_execute(query, variables):
+        calls.append(variables)
+        result = {}
+        for key, value in variables.items():
+            if not key.startswith("from"):
+                continue
+            month = datetime.fromisoformat(value).month
+            payload = contribution_payload(
+                [(f"me/repo-{index}", index >= 97, [month + index + 1]) for index in range(99)]
+            )
+            result[f"month{key[4:]}" if key[4:] else "user"] = payload["user"]
+        return result
+
+    monkeypatch.setattr(client, "execute_graphql", fake_execute)
+    counts = client.fetch_monthly_commit_counts(
+        "me",
+        windows[0].month_start,
+        windows[-1].month_start,
+        include_private=include_private,
+        show_private_names=show_private_names,
+        now=now,
+    )
+
+    expected = {}
+    for window in windows:
+        month = window.month_start.month
+        repositories = {f"me/repo-{index}": month + index + 1 for index in range(97)}
+        if include_private:
+            if show_private_names:
+                repositories.update({f"me/repo-{index}": month + index + 1 for index in (97, 98)})
+            else:
+                repositories["Private repositories"] = (month + 98) + (month + 99)
+        expected[window.month_start] = repositories
+    assert counts == expected
+    assert len(calls) == 3
+    assert [sum(key.startswith("from") for key in call) for call in calls] == [12, 12, 1]
+    assert calls[-1]["to"] == now.isoformat()

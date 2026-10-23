@@ -9,10 +9,11 @@ import time as time_module
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
-import requests
+if TYPE_CHECKING:
+    import requests
 
 GITHUB_HOSTNAME = "github.com"
 GITHUB_API_URL = "https://api.github.com"
@@ -23,8 +24,8 @@ MAX_RETRIES = 3
 MAX_RATE_LIMIT_WAIT_SECONDS = 300
 MIN_SECONDARY_RATE_LIMIT_WAIT_SECONDS = 60
 MAX_CONTRIBUTION_REPOSITORIES = 100
-# Bound server work while avoiding daily contribution nodes in the response.
-MONTHS_PER_QUERY = 6
+# Bound each sequential query to 1,200 repository aggregates, with no daily nodes.
+MONTHS_PER_QUERY = 12
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 PRIVATE_REPOSITORY_LABEL = "Private repositories"
 
@@ -223,6 +224,8 @@ class GitHubClient:
     ) -> None:
         if not token:
             raise ValueError("GitHub token must not be empty.")
+        import requests
+
         self._session = requests.Session()
         self._session.headers.update(
             {
@@ -325,6 +328,8 @@ class GitHubClient:
         *,
         rate_limit_check: Callable[[requests.Response], bool] | None = None,
     ) -> requests.Response:
+        import requests
+
         last_transport_error: requests.RequestException | None = None
         remaining_wait_seconds = self._max_rate_limit_wait_seconds
         rate_limit_attempt = 0
@@ -382,6 +387,8 @@ class GitHubClient:
 
     @staticmethod
     def _decode_json(response: requests.Response, description: str) -> Any:
+        import requests
+
         try:
             return response.json()
         except requests.exceptions.JSONDecodeError as exc:
