@@ -1,0 +1,1523 @@
+{
+  "date": "2026-10-23",
+  "baseline_commit": "3afad3a6c96d68aa190ad88a2ca0bfcfa6e456df",
+  "environment": {
+    "python": "3.12.14",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "dependencies": "requirements/dev.lock"
+  },
+  "candidates": [
+    {
+      "name": "Compound PathCollection",
+      "decision": "accept: PNG only, disjoint raster edges, no sketch effects",
+      "root_cause": "Repeated hatch painting per monthly rectangle inside each original repository collection"
+    },
+    {
+      "name": "Compound PathPatch",
+      "decision": "reject: no demonstrated advantage over collection; compound vector rendering is incompatible"
+    },
+    {
+      "name": "Separate zero-height hatches",
+      "decision": "reject: superseded; extra collections and changed vector structure"
+    },
+    {
+      "name": "24-month API batches",
+      "decision": "reject: promising sparse-account result did not pass heavier live validation"
+    },
+    {
+      "name": "Monthly aliases under one user",
+      "decision": "reject: smaller JSON without a reliable latency gain"
+    }
+  ],
+  "prototype_method": "Single screening samples share backend/font caches and include cold imports in the first baseline; use final paired repetitions for performance claims.",
+  "screening": {
+    "compound_all_formats": {
+      "normal": {
+        "baseline": {
+          "cpu": 1.759646,
+          "wall": 2.1292969580972567,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 96144,
+            ".svg": 1043461
+          }
+        },
+        "compound_auto": {
+          "cpu": 0.45133299999999976,
+          "wall": 0.4527800410287455,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 95879,
+            ".svg": 697171
+          }
+        },
+        "compound_snap": {
+          "cpu": 0.48757300000000026,
+          "wall": 0.5024870419874787,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 95879,
+            ".svg": 697171
+          }
+        }
+      },
+      "long": {
+        "baseline": {
+          "cpu": 0.9880719999999998,
+          "wall": 1.0121025829575956,
+          "png_pixel_sha256": "6adca308f61ce99fcb8c2f754aed38f861f81dc128e0e6d1e2ee22186c8a1edd",
+          "size": [
+            3223,
+            531
+          ],
+          "file_sizes": {
+            ".png": 215783,
+            ".pdf": 59280,
+            ".svg": 655181
+          }
+        },
+        "compound_auto": {
+          "cpu": 0.3445640000000001,
+          "wall": 0.347106667002663,
+          "png_pixel_sha256": "6ec604f34f579b1454e361b3e940753af384a062e2daa97061f696e2a47360d1",
+          "size": [
+            3223,
+            531
+          ],
+          "file_sizes": {
+            ".png": 265050,
+            ".pdf": 59152,
+            ".svg": 414381
+          }
+        },
+        "compound_snap": {
+          "cpu": 0.34737500000000043,
+          "wall": 0.35775837500113994,
+          "png_pixel_sha256": "6adca308f61ce99fcb8c2f754aed38f861f81dc128e0e6d1e2ee22186c8a1edd",
+          "size": [
+            3223,
+            531
+          ],
+          "file_sizes": {
+            ".png": 215783,
+            ".pdf": 59152,
+            ".svg": 414381
+          }
+        }
+      },
+      "short": {
+        "baseline": {
+          "cpu": 0.1580269999999997,
+          "wall": 0.1604575419332832,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39141,
+            ".svg": 177774
+          }
+        },
+        "compound_auto": {
+          "cpu": 0.15092600000000012,
+          "wall": 0.1538172090658918,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39140,
+            ".svg": 177234
+          }
+        },
+        "compound_snap": {
+          "cpu": 0.1471549999999997,
+          "wall": 0.14821495907381177,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39140,
+            ".svg": 177234
+          }
+        }
+      }
+    },
+    "alternative_renderers": {
+      "normal": {
+        "baseline": {
+          "cpu": 1.6382889999999999,
+          "wall": 1.703288915916346,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 96144,
+            ".svg": 1043461
+          }
+        },
+        "compound_snap": {
+          "cpu": 0.4495990000000001,
+          "wall": 0.45471758395433426,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 95879,
+            ".svg": 697171
+          }
+        },
+        "compound_patch": {
+          "cpu": 0.5402170000000002,
+          "wall": 0.5448882499476895,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 95879,
+            ".svg": 696991
+          }
+        },
+        "split_zero": {
+          "cpu": 0.8238909999999997,
+          "wall": 0.8692850419320166,
+          "png_pixel_sha256": "a8dc79f172de7fb22d7bbcc4759ed6528cc7e888d764e828831a9b06c5478a95",
+          "size": [
+            3143,
+            751
+          ],
+          "file_sizes": {
+            ".png": 341420,
+            ".pdf": 99418,
+            ".svg": 1028921
+          }
+        }
+      },
+      "short": {
+        "baseline": {
+          "cpu": 0.17164499999999983,
+          "wall": 0.18660195800475776,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39141,
+            ".svg": 177774
+          }
+        },
+        "compound_snap": {
+          "cpu": 0.16209799999999985,
+          "wall": 0.18962000007741153,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39140,
+            ".svg": 177234
+          }
+        },
+        "compound_patch": {
+          "cpu": 0.1550229999999999,
+          "wall": 0.16244783299043775,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39140,
+            ".svg": 177218
+          }
+        },
+        "split_zero": {
+          "cpu": 0.145111,
+          "wall": 0.14545170799829066,
+          "png_pixel_sha256": "677951dd58f0a26d6d9e9cd05aa9f94616abe2ac5336b3450cc45520dc36267d",
+          "size": [
+            1623,
+            523
+          ],
+          "file_sizes": {
+            ".png": 54379,
+            ".pdf": 39145,
+            ".svg": 177828
+          }
+        }
+      }
+    },
+    "compound_vector_failure": {
+      "normal": {
+        "svg_bar_paths_and_styles_equal": true,
+        "pdf_pixels_equal": false,
+        "pdf_hashes": [
+          [
+            [
+              3144,
+              750
+            ],
+            "a2cc1dfe20f5f1a7730eea41e3b465709972795b8ccae9f84968f98b131c0088"
+          ],
+          [
+            [
+              3144,
+              750
+            ],
+            "9de9a050b8f6b934fd742f0dbb272c5fb822a91b25ea7bc36ba304e023dd2e9e"
+          ]
+        ]
+      },
+      "long": {
+        "svg_bar_paths_and_styles_equal": true,
+        "pdf_pixels_equal": false,
+        "pdf_hashes": [
+          [
+            [
+              3224,
+              532
+            ],
+            "ee293f0e175ccb3a3315fe451e7e573b9cc240decd60bd1d5053c00ee2b00efb"
+          ],
+          [
+            [
+              3224,
+              532
+            ],
+            "38b966cf6eb0d302088d769bd57c94e840d69ea7344bb24a4ff3eed8f6f32873"
+          ]
+        ]
+      },
+      "short": {
+        "svg_bar_paths_and_styles_equal": true,
+        "pdf_pixels_equal": false,
+        "pdf_hashes": [
+          [
+            [
+              1624,
+              524
+            ],
+            "34e5853a919236345bced5c6fafbd91c647a2e1fc18b8c8900b27799fc1471bf"
+          ],
+          [
+            [
+              1624,
+              524
+            ],
+            "72bb55ee927f24531789c512b99b857dfc81ce6221de7936de1f0fd3be366569"
+          ]
+        ]
+      }
+    },
+    "initial_edge_cases": {
+      "sketch_output_equal": false,
+      "overlapping_edges_output_equal": false
+    },
+    "initial_paired_before_eligibility_guards": {
+      "python": "3.12.14",
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "warmups_per_source_per_case": 1,
+      "cases": {
+        "default": {
+          "months": 120,
+          "repositories": 40,
+          "active_per_month": 10,
+          "top_repos": 20,
+          "formats": [
+            "png",
+            "pdf",
+            "svg"
+          ],
+          "repeats": 7,
+          "samples": {
+            "baseline": {
+              "cpu_seconds": [
+                1.6417859999999997,
+                1.6398570000000001,
+                1.6593459999999993,
+                1.5419649999999994,
+                1.6172769999999996,
+                1.5075259999999986,
+                1.4197740000000003
+              ],
+              "elapsed_seconds": [
+                4.416926624951884,
+                2.840426499955356,
+                2.4433308750158176,
+                1.920249667018652,
+                2.0407889579655603,
+                1.8304044159594923,
+                1.6816910830093548
+              ],
+              "cpu_median_seconds": 1.6172769999999996,
+              "elapsed_median_seconds": 2.0407889579655603
+            },
+            "candidate": {
+              "cpu_seconds": [
+                0.715652,
+                0.630954,
+                0.6233630000000003,
+                0.6597039999999996,
+                0.7499250000000011,
+                0.8073050000000013,
+                0.6880340000000018
+              ],
+              "elapsed_seconds": [
+                2.269674125011079,
+                1.1154614581028,
+                0.8830842500319704,
+                0.7406302079325542,
+                0.9856858330313116,
+                1.1678263749927282,
+                0.8116196249611676
+              ],
+              "cpu_median_seconds": 0.6880340000000018,
+              "elapsed_median_seconds": 0.9856858330313116
+            }
+          },
+          "sha256": {
+            "baseline": {
+              "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+              "chart-1.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+              "chart-2.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+            },
+            "candidate": {
+              "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+              "chart-1.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+              "chart-2.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+            }
+          }
+        },
+        "repeated_png": {
+          "months": 120,
+          "repositories": 40,
+          "active_per_month": 10,
+          "top_repos": 20,
+          "formats": [
+            "png",
+            "png",
+            "png"
+          ],
+          "repeats": 7,
+          "samples": {
+            "baseline": {
+              "cpu_seconds": [
+                1.056986000000002,
+                1.2320439999999984,
+                1.0483000000000011,
+                1.1604429999999972,
+                1.0157360000000004,
+                1.0902619999999992,
+                1.0607310000000005
+              ],
+              "elapsed_seconds": [
+                1.224315083003603,
+                1.434063500026241,
+                1.1260241250274703,
+                1.3817807500017807,
+                1.0660709580406547,
+                1.2068170830607414,
+                1.1918888749787584
+              ],
+              "cpu_median_seconds": 1.0607310000000005,
+              "elapsed_median_seconds": 1.2068170830607414
+            },
+            "candidate": {
+              "cpu_seconds": [
+                0.2354959999999977,
+                0.2544409999999999,
+                0.2913090000000018,
+                0.22378699999999796,
+                0.22190299999999752,
+                0.28530699999999953,
+                0.24106000000000094
+              ],
+              "elapsed_seconds": [
+                0.27585325005929917,
+                0.27492479200009257,
+                0.37399687501601875,
+                0.2344207080313936,
+                0.24349033401813358,
+                0.48897575004957616,
+                0.2673072919715196
+              ],
+              "cpu_median_seconds": 0.24106000000000094,
+              "elapsed_median_seconds": 0.27492479200009257
+            }
+          },
+          "sha256": {
+            "baseline": {
+              "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+              "chart-1.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+              "chart-2.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566"
+            },
+            "candidate": {
+              "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+              "chart-1.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+              "chart-2.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566"
+            }
+          }
+        },
+        "vector_only": {
+          "months": 120,
+          "repositories": 40,
+          "active_per_month": 10,
+          "top_repos": 20,
+          "formats": [
+            "pdf",
+            "svg"
+          ],
+          "repeats": 5,
+          "samples": {
+            "baseline": {
+              "cpu_seconds": [
+                0.4319179999999996,
+                0.431712000000001,
+                0.4250820000000033,
+                0.434469,
+                0.4108969999999985
+              ],
+              "elapsed_seconds": [
+                0.46985387499444187,
+                0.4626824170118198,
+                0.4552273750305176,
+                0.5157555839978158,
+                0.4584078749176115
+              ],
+              "cpu_median_seconds": 0.431712000000001,
+              "elapsed_median_seconds": 0.4626824170118198
+            },
+            "candidate": {
+              "cpu_seconds": [
+                0.46040600000000254,
+                0.43150500000000136,
+                0.39082499999999953,
+                0.45073599999999914,
+                0.41784299999999774
+              ],
+              "elapsed_seconds": [
+                0.5119102090829983,
+                0.48262270796112716,
+                0.4177896660985425,
+                0.6899955000262707,
+                0.46226229204330593
+              ],
+              "cpu_median_seconds": 0.43150500000000136,
+              "elapsed_median_seconds": 0.48262270796112716
+            }
+          },
+          "sha256": {
+            "baseline": {
+              "chart-0.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+              "chart-1.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+            },
+            "candidate": {
+              "chart-0.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+              "chart-1.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+            }
+          }
+        },
+        "short": {
+          "months": 6,
+          "repositories": 4,
+          "active_per_month": 1,
+          "top_repos": 20,
+          "formats": [
+            "png",
+            "pdf",
+            "svg"
+          ],
+          "repeats": 5,
+          "samples": {
+            "baseline": {
+              "cpu_seconds": [
+                0.2183289999999971,
+                0.229140000000001,
+                0.24273500000000325,
+                0.3190129999999982,
+                0.2113339999999937
+              ],
+              "elapsed_seconds": [
+                0.22851854201871902,
+                0.23881183308549225,
+                0.27197579108178616,
+                0.4482436249963939,
+                0.21677274990361184
+              ],
+              "cpu_median_seconds": 0.229140000000001,
+              "elapsed_median_seconds": 0.23881183308549225
+            },
+            "candidate": {
+              "cpu_seconds": [
+                0.234339999999996,
+                0.23564400000000063,
+                0.21624199999999405,
+                0.2665499999999952,
+                0.20328399999999647
+              ],
+              "elapsed_seconds": [
+                0.24960974999703467,
+                0.2547992079053074,
+                0.22833262500353158,
+                0.3130910829640925,
+                0.2065582500072196
+              ],
+              "cpu_median_seconds": 0.234339999999996,
+              "elapsed_median_seconds": 0.24960974999703467
+            }
+          },
+          "sha256": {
+            "baseline": {
+              "chart-0.png": "aa6763ec6dfeeb4aa25c524c3770edb0e1058f6729a14e22fd49a01d96acc80f",
+              "chart-1.pdf": "383670cd7b7193717e5b2d7c82dee3b467331b90e72fb8fb59cf139d5b6eb690",
+              "chart-2.svg": "dc2a54c58ab447fa1c01f634a44d9d12bf4cde4a8469aa43df8e7480fe7ec493"
+            },
+            "candidate": {
+              "chart-0.png": "aa6763ec6dfeeb4aa25c524c3770edb0e1058f6729a14e22fd49a01d96acc80f",
+              "chart-1.pdf": "383670cd7b7193717e5b2d7c82dee3b467331b90e72fb8fb59cf139d5b6eb690",
+              "chart-2.svg": "dc2a54c58ab447fa1c01f634a44d9d12bf4cde4a8469aa43df8e7480fe7ec493"
+            }
+          }
+        },
+        "all_repositories": {
+          "months": 216,
+          "repositories": 100,
+          "active_per_month": 25,
+          "top_repos": null,
+          "formats": [
+            "png"
+          ],
+          "repeats": 3,
+          "samples": {
+            "baseline": {
+              "cpu_seconds": [
+                14.049095999999999,
+                14.063783999999998,
+                14.050515000000004
+              ],
+              "elapsed_seconds": [
+                34.78788858396001,
+                47.057763583026826,
+                33.566511832992546
+              ],
+              "cpu_median_seconds": 14.050515000000004,
+              "elapsed_median_seconds": 34.78788858396001
+            },
+            "candidate": {
+              "cpu_seconds": [
+                0.9673510000000007,
+                0.9605999999999995,
+                0.8178359999999998
+              ],
+              "elapsed_seconds": [
+                1.7240076250163838,
+                1.982522665988654,
+                0.9902577080065385
+              ],
+              "cpu_median_seconds": 0.9605999999999995,
+              "elapsed_median_seconds": 1.7240076250163838
+            }
+          },
+          "sha256": {
+            "baseline": {
+              "chart-0.png": "30b74d8f092a7fb8f209c78a3bd55b213fdedf4ab0b5f9e6b4b7ef43498c6388"
+            },
+            "candidate": {
+              "chart-0.png": "30b74d8f092a7fb8f209c78a3bd55b213fdedf4ab0b5f9e6b4b7ef43498c6388"
+            }
+          }
+        }
+      }
+    }
+  },
+  "final_paired": {
+    "python": "3.12.14",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "warmups_per_source_per_case": 1,
+    "cases": {
+      "default": {
+        "months": 120,
+        "repositories": 40,
+        "active_per_month": 10,
+        "top_repos": 20,
+        "formats": [
+          "png",
+          "pdf",
+          "svg"
+        ],
+        "repeats": 7,
+        "samples": {
+          "baseline": {
+            "cpu_seconds": [
+              1.5228079999999995,
+              1.5400350000000005,
+              1.4134509999999993,
+              1.637516999999999,
+              1.5229620000000015,
+              1.5366499999999998,
+              1.3976909999999982
+            ],
+            "elapsed_seconds": [
+              1.647357999929227,
+              1.7532842500368133,
+              1.6505231249611825,
+              2.653573082992807,
+              1.743930457974784,
+              2.0027415410149843,
+              1.5285512499976903
+            ],
+            "cpu_median_seconds": 1.5229620000000015,
+            "elapsed_median_seconds": 1.743930457974784
+          },
+          "candidate": {
+            "cpu_seconds": [
+              0.6333700000000002,
+              0.6765730000000003,
+              0.5916760000000005,
+              0.7896889999999992,
+              0.7652970000000003,
+              0.6671089999999982,
+              0.588045000000001
+            ],
+            "elapsed_seconds": [
+              0.6744113749591634,
+              0.7679081249516457,
+              0.6186997500481084,
+              1.5125601249746978,
+              1.185862584039569,
+              0.7442975000012666,
+              0.7079488330055028
+            ],
+            "cpu_median_seconds": 0.6671089999999982,
+            "elapsed_median_seconds": 0.7442975000012666
+          }
+        },
+        "sha256": {
+          "baseline": {
+            "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+            "chart-1.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+            "chart-2.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+          },
+          "candidate": {
+            "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+            "chart-1.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+            "chart-2.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+          }
+        }
+      },
+      "repeated_png": {
+        "months": 120,
+        "repositories": 40,
+        "active_per_month": 10,
+        "top_repos": 20,
+        "formats": [
+          "png",
+          "png",
+          "png"
+        ],
+        "repeats": 7,
+        "samples": {
+          "baseline": {
+            "cpu_seconds": [
+              1.0389839999999992,
+              1.030628,
+              1.0842649999999985,
+              1.084461000000001,
+              1.050094999999999,
+              1.080766999999998,
+              1.0847630000000024
+            ],
+            "elapsed_seconds": [
+              1.1141386249801144,
+              1.0797652920009568,
+              1.1921552079729736,
+              1.1669309580465779,
+              1.111981249996461,
+              1.1938739999895915,
+              1.250380082987249
+            ],
+            "cpu_median_seconds": 1.080766999999998,
+            "elapsed_median_seconds": 1.1669309580465779
+          },
+          "candidate": {
+            "cpu_seconds": [
+              0.2206550000000007,
+              0.22707799999999878,
+              0.2379780000000018,
+              0.2546670000000013,
+              0.24263799999999947,
+              0.2594639999999977,
+              0.24345900000000142
+            ],
+            "elapsed_seconds": [
+              0.23257116705644876,
+              0.2366235830122605,
+              0.25321054202504456,
+              0.269147792016156,
+              0.2572567079914734,
+              0.2868401249870658,
+              0.27831774996593595
+            ],
+            "cpu_median_seconds": 0.24263799999999947,
+            "elapsed_median_seconds": 0.2572567079914734
+          }
+        },
+        "sha256": {
+          "baseline": {
+            "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+            "chart-1.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+            "chart-2.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566"
+          },
+          "candidate": {
+            "chart-0.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+            "chart-1.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+            "chart-2.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566"
+          }
+        }
+      },
+      "vector_only": {
+        "months": 120,
+        "repositories": 40,
+        "active_per_month": 10,
+        "top_repos": 20,
+        "formats": [
+          "pdf",
+          "svg"
+        ],
+        "repeats": 5,
+        "samples": {
+          "baseline": {
+            "cpu_seconds": [
+              0.4710029999999996,
+              0.49187399999999926,
+              0.4017250000000061,
+              0.46882300000000043,
+              0.39759199999999595
+            ],
+            "elapsed_seconds": [
+              0.7154782500583678,
+              0.6869052080437541,
+              0.43578866694588214,
+              0.9236797919729725,
+              0.4248036249773577
+            ],
+            "cpu_median_seconds": 0.46882300000000043,
+            "elapsed_median_seconds": 0.6869052080437541
+          },
+          "candidate": {
+            "cpu_seconds": [
+              0.4615940000000016,
+              0.4660650000000004,
+              0.41285999999999845,
+              0.3807469999999995,
+              0.40582299999999805
+            ],
+            "elapsed_seconds": [
+              0.7075134170008823,
+              0.6825297080213204,
+              0.4533692919649184,
+              0.4232841660268605,
+              0.4608936660224572
+            ],
+            "cpu_median_seconds": 0.41285999999999845,
+            "elapsed_median_seconds": 0.4608936660224572
+          }
+        },
+        "sha256": {
+          "baseline": {
+            "chart-0.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+            "chart-1.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+          },
+          "candidate": {
+            "chart-0.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+            "chart-1.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+          }
+        }
+      },
+      "short": {
+        "months": 6,
+        "repositories": 4,
+        "active_per_month": 1,
+        "top_repos": 20,
+        "formats": [
+          "png",
+          "pdf",
+          "svg"
+        ],
+        "repeats": 5,
+        "samples": {
+          "baseline": {
+            "cpu_seconds": [
+              0.2526990000000069,
+              0.2540430000000029,
+              0.2578460000000007,
+              0.24037799999999976,
+              0.27964099999999803
+            ],
+            "elapsed_seconds": [
+              0.27074908395297825,
+              0.2901783339912072,
+              0.28651366708800197,
+              0.26624825003091246,
+              0.34177412500139326
+            ],
+            "cpu_median_seconds": 0.2540430000000029,
+            "elapsed_median_seconds": 0.28651366708800197
+          },
+          "candidate": {
+            "cpu_seconds": [
+              0.22529200000000316,
+              0.2295649999999938,
+              0.2290309999999991,
+              0.25919600000000287,
+              0.2369289999999964
+            ],
+            "elapsed_seconds": [
+              0.24620254093315452,
+              0.24361112504266202,
+              0.2546530410181731,
+              0.30495679192245007,
+              0.2558212500298396
+            ],
+            "cpu_median_seconds": 0.2295649999999938,
+            "elapsed_median_seconds": 0.2546530410181731
+          }
+        },
+        "sha256": {
+          "baseline": {
+            "chart-0.png": "aa6763ec6dfeeb4aa25c524c3770edb0e1058f6729a14e22fd49a01d96acc80f",
+            "chart-1.pdf": "383670cd7b7193717e5b2d7c82dee3b467331b90e72fb8fb59cf139d5b6eb690",
+            "chart-2.svg": "dc2a54c58ab447fa1c01f634a44d9d12bf4cde4a8469aa43df8e7480fe7ec493"
+          },
+          "candidate": {
+            "chart-0.png": "aa6763ec6dfeeb4aa25c524c3770edb0e1058f6729a14e22fd49a01d96acc80f",
+            "chart-1.pdf": "383670cd7b7193717e5b2d7c82dee3b467331b90e72fb8fb59cf139d5b6eb690",
+            "chart-2.svg": "dc2a54c58ab447fa1c01f634a44d9d12bf4cde4a8469aa43df8e7480fe7ec493"
+          }
+        }
+      }
+    }
+  },
+  "memory": {
+    "baseline": {
+      "python": "3.12.14",
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "workload": "120 months, 40 repositories (10 active/month), top 20, PNG+PDF+SVG",
+      "formats": [
+        "png",
+        "pdf",
+        "svg"
+      ],
+      "render_seconds": [
+        1.9682426669169217,
+        2.5821708750445396,
+        1.887129915994592
+      ],
+      "render_median_seconds": 1.9682426669169217,
+      "render_cpu_seconds": [
+        1.4878580000000001,
+        1.6430089999999997,
+        1.5308419999999998
+      ],
+      "render_cpu_median_seconds": 1.5308419999999998,
+      "help_seconds": [
+        0.06798020796850324,
+        0.0795661669690162,
+        0.060400291928090155
+      ],
+      "help_median_seconds": 0.06798020796850324,
+      "help_cpu_seconds": [
+        0.049074,
+        0.052877999999999994,
+        0.04317300000000001
+      ],
+      "help_cpu_median_seconds": 0.049074,
+      "peak_rss_mib": 99.046875,
+      "peak_python_allocations_mib": 4.050682067871094,
+      "output_sha256": {
+        ".png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+        ".pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+        ".svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+      },
+      "output_files_sha256": {
+        "chart.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+        "chart.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+        "chart.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+      }
+    },
+    "candidate": {
+      "python": "3.12.14",
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "workload": "120 months, 40 repositories (10 active/month), top 20, PNG+PDF+SVG",
+      "formats": [
+        "png",
+        "pdf",
+        "svg"
+      ],
+      "render_seconds": [
+        0.7353732499759644,
+        0.6669842079281807,
+        0.6687622090103105
+      ],
+      "render_median_seconds": 0.6687622090103105,
+      "render_cpu_seconds": [
+        0.629521,
+        0.59901,
+        0.5997910000000002
+      ],
+      "render_cpu_median_seconds": 0.5997910000000002,
+      "help_seconds": [
+        0.05872950004413724,
+        0.054933458915911615,
+        0.05370716599281877
+      ],
+      "help_median_seconds": 0.054933458915911615,
+      "help_cpu_seconds": [
+        0.05030000000000001,
+        0.046395,
+        0.045784
+      ],
+      "help_cpu_median_seconds": 0.046395,
+      "peak_rss_mib": 100.453125,
+      "peak_python_allocations_mib": 4.070943832397461,
+      "output_sha256": {
+        ".png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+        ".pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+        ".svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+      },
+      "output_files_sha256": {
+        "chart.png": "dbf2c61a6938857005fe717df6255d2773d9df756bd985173d144c674328f566",
+        "chart.pdf": "8cb041f63aaa19034aca7e54f7a9a1395bc707ef960af15d9c1acfb10afb790b",
+        "chart.svg": "435e9890a59d165c0a058effeb1e8868eae69eb324c37196623a5ca114569377"
+      }
+    },
+    "note": "Separate warmed processes, RSS captured before separate untimed tracemalloc render; small RSS differences are not a reliable regression percentage"
+  },
+  "api": {
+    "sparse_public_two_years": {
+      "environment": "macOS-27.0.1-arm64-arm-64bit",
+      "python": "3.12.14",
+      "username": "kfuku52",
+      "range": [
+        "2024-01",
+        "2025-12"
+      ],
+      "max_retries": 0,
+      "warmups": [
+        {
+          "variant": "baseline",
+          "seconds": 2.4809847910655662,
+          "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+          "http_requests": 2,
+          "response_bytes": 7538
+        },
+        {
+          "variant": "nested",
+          "seconds": 2.6687331249704584,
+          "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+          "http_requests": 2,
+          "response_bytes": 6884
+        },
+        {
+          "variant": "larger",
+          "seconds": 2.299990582978353,
+          "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+          "http_requests": 1,
+          "response_bytes": 7538
+        }
+      ],
+      "samples": {
+        "baseline": [
+          {
+            "variant": "baseline",
+            "seconds": 2.848009999957867,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 2,
+            "response_bytes": 7538
+          },
+          {
+            "variant": "baseline",
+            "seconds": 2.6372764999978244,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 2,
+            "response_bytes": 7538
+          },
+          {
+            "variant": "baseline",
+            "seconds": 2.5430216250242665,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 2,
+            "response_bytes": 7538
+          }
+        ],
+        "nested": [
+          {
+            "variant": "nested",
+            "seconds": 2.393371041980572,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 2,
+            "response_bytes": 6884
+          },
+          {
+            "variant": "nested",
+            "seconds": 2.8202423750190064,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 2,
+            "response_bytes": 6884
+          },
+          {
+            "variant": "nested",
+            "seconds": 2.9298852080246434,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 2,
+            "response_bytes": 6884
+          }
+        ],
+        "larger": [
+          {
+            "variant": "larger",
+            "seconds": 2.0866420830134302,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 1,
+            "response_bytes": 7538
+          },
+          {
+            "variant": "larger",
+            "seconds": 2.084514040965587,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 1,
+            "response_bytes": 7538
+          },
+          {
+            "variant": "larger",
+            "seconds": 2.421220416086726,
+            "counts_sha256": "f9dc809d7170f0498a500e38e6168ba9df914599355be324837e35dd82335901",
+            "http_requests": 1,
+            "response_bytes": 7538
+          }
+        ]
+      },
+      "median_seconds": {
+        "baseline": 2.6372764999978244,
+        "nested": 2.8202423750190064,
+        "larger": 2.0866420830134302
+      }
+    },
+    "dense_account_cap": {
+      "environment": "macOS-27.0.1-arm64-arm-64bit",
+      "python": "3.12.14",
+      "username": "sindresorhus",
+      "range": [
+        "2024-01",
+        "2025-12"
+      ],
+      "max_retries": 0,
+      "warmups": [],
+      "failure": {
+        "type": "IncompleteContributionDataError",
+        "message": "GitHub contribution data reached the repository limit (100) for 2024-05. No chart was written because the result may be incomplete."
+      },
+      "samples": {
+        "baseline": [],
+        "larger": []
+      },
+      "median_seconds": {
+        "baseline": null,
+        "larger": null
+      }
+    },
+    "dense_account_query_failure": {
+      "environment": "macOS-27.0.1-arm64-arm-64bit",
+      "python": "3.12.14",
+      "username": "antfu",
+      "range": [
+        "2024-01",
+        "2025-12"
+      ],
+      "max_retries": 0,
+      "warmups": [
+        {
+          "variant": "baseline",
+          "seconds": 11.157927750027739,
+          "counts_sha256": "a372a9716207c47147e9fa57018b6b1c15e6e33e79a896f854807e574d788812",
+          "http_requests": 2,
+          "response_bytes": 135545,
+          "max_active_repositories": 70
+        }
+      ],
+      "failure": {
+        "type": "GitHubAPIError",
+        "message": "GitHub GraphQL API rejected the contribution query. Request ID: FDDE:3CE948:2C7E59:42F9D1:6ADAFBC3."
+      },
+      "samples": {
+        "baseline": [],
+        "larger": []
+      },
+      "median_seconds": {
+        "baseline": null,
+        "larger": null
+      }
+    },
+    "note": "No response bodies or repository names persisted; historical public-only counts digests checked; max_retries=0; query failure is observed, not attributed to a specific server limit"
+  },
+  "equivalence": {
+    "locked": {
+      "python": "3.12.14",
+      "matplotlib": "3.11.1",
+      "cases": {
+        "normal": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".svg": "5bfa3853b8237cb1229117f73d3faafce526f204ad0b0578e1898693b8291c6e",
+              ".png": "2615e69696a757eec214303b98ee8cb44f505c6b284d75d56f37b039d2db931c",
+              ".pdf": "962cee989a8dfb09434ac17a9b1387054087d3e58190e9cf7d433c623f7e3fd9"
+            },
+            "candidate": {
+              ".svg": "5bfa3853b8237cb1229117f73d3faafce526f204ad0b0578e1898693b8291c6e",
+              ".png": "2615e69696a757eec214303b98ee8cb44f505c6b284d75d56f37b039d2db931c",
+              ".pdf": "962cee989a8dfb09434ac17a9b1387054087d3e58190e9cf7d433c623f7e3fd9"
+            }
+          }
+        },
+        "long": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".svg": "d51c2b72fef00a7a2a82faf8e07006a5d104c5dfb87b1d3a193832596da4a823",
+              ".png": "0f75dc67eae7515a90e8cdeac33237ce4aa1cbb9a9ab6a346c02dee24a79b619",
+              ".pdf": "8f3c3ba6f360db755aa6cc468b66c852b96f8bd15b5a7f09dc5742663ce909a8"
+            },
+            "candidate": {
+              ".svg": "d51c2b72fef00a7a2a82faf8e07006a5d104c5dfb87b1d3a193832596da4a823",
+              ".png": "0f75dc67eae7515a90e8cdeac33237ce4aa1cbb9a9ab6a346c02dee24a79b619",
+              ".pdf": "8f3c3ba6f360db755aa6cc468b66c852b96f8bd15b5a7f09dc5742663ce909a8"
+            }
+          }
+        },
+        "all_repositories": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "77cd6e59512599737a1df12ab80223acb882f6713d998c3914b840aa93f95dd5",
+              ".pdf": "1e2306e1e2860984f9594ae39d2fce7fae8ba60b70c0a1d60ba708e3b8f228ed",
+              ".svg": "8187ad6bf947142f4274d9abef74eed561182aca5bab1327c2127e294f6fa39a"
+            },
+            "candidate": {
+              ".png": "77cd6e59512599737a1df12ab80223acb882f6713d998c3914b840aa93f95dd5",
+              ".pdf": "1e2306e1e2860984f9594ae39d2fce7fae8ba60b70c0a1d60ba708e3b8f228ed",
+              ".svg": "8187ad6bf947142f4274d9abef74eed561182aca5bab1327c2127e294f6fa39a"
+            }
+          }
+        },
+        "short_sparse": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "320e0f2aeaaeaa0be4261ddeeb92a605dbcae6d8e9425409e6b7f7b46bf5c198",
+              ".pdf": "78982f82470ec8e71af9298ec847264ff209726d03f7fd30817ff48b0c2547e0",
+              ".svg": "c36c4438c1fc3f9ca1a5153221bb15dcc2f4c9656b26c11f74c637c44d6c6f9d"
+            },
+            "candidate": {
+              ".png": "320e0f2aeaaeaa0be4261ddeeb92a605dbcae6d8e9425409e6b7f7b46bf5c198",
+              ".pdf": "78982f82470ec8e71af9298ec847264ff209726d03f7fd30817ff48b0c2547e0",
+              ".svg": "c36c4438c1fc3f9ca1a5153221bb15dcc2f4c9656b26c11f74c637c44d6c6f9d"
+            }
+          }
+        },
+        "long_labels_mtd": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "531f17e3c66d4519e133c67f310274b5af86eabed6a84309e63b8733b92d29d2",
+              ".pdf": "cf473e7c62110154224d3cd11987a4bae13712d4844d97da5d3e899e5d850783",
+              ".svg": "96da287a1174b28dee87f059356c44dce168673da239de13da3c737c0f9de671"
+            },
+            "candidate": {
+              ".png": "531f17e3c66d4519e133c67f310274b5af86eabed6a84309e63b8733b92d29d2",
+              ".pdf": "cf473e7c62110154224d3cd11987a4bae13712d4844d97da5d3e899e5d850783",
+              ".svg": "96da287a1174b28dee87f059356c44dce168673da239de13da3c737c0f9de671"
+            }
+          }
+        },
+        "huge_counts": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "8a5d25269c3be3907dd9145a1984fcef1cdf9d70812818c1f968e03b93d686b7",
+              ".pdf": "8655783a315635cc00d3ca032737c19d7512a833d63b6672517c37f443ef2428",
+              ".svg": "91427d37f1c260e94377cd86cad69d583b2537d3479d5f417b7204a933b5aa15"
+            },
+            "candidate": {
+              ".png": "8a5d25269c3be3907dd9145a1984fcef1cdf9d70812818c1f968e03b93d686b7",
+              ".pdf": "8655783a315635cc00d3ca032737c19d7512a833d63b6672517c37f443ef2428",
+              ".svg": "91427d37f1c260e94377cd86cad69d583b2537d3479d5f417b7204a933b5aa15"
+            }
+          }
+        },
+        "one_month": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "b4d36b8af9ad72524fb2e014f3102542c14bc031dc98a4338437c27b703c900e",
+              ".pdf": "d53f97a30dbfd41cdb4ee46de3eccb192f39f6ad5c41b056f59c915ef4232eaa",
+              ".svg": "e17c859f2dde4c6c2420bace8b7dfb7c9a6240f2e53b3b94da40e532887abe31"
+            },
+            "candidate": {
+              ".png": "b4d36b8af9ad72524fb2e014f3102542c14bc031dc98a4338437c27b703c900e",
+              ".pdf": "d53f97a30dbfd41cdb4ee46de3eccb192f39f6ad5c41b056f59c915ef4232eaa",
+              ".svg": "e17c859f2dde4c6c2420bace8b7dfb7c9a6240f2e53b3b94da40e532887abe31"
+            }
+          }
+        }
+      }
+    },
+    "minimum": {
+      "python": "3.11.17",
+      "matplotlib": "3.8.0",
+      "cases": {
+        "normal": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".svg": "1ecf0340aa25775768cbb86fd3e7362dc3e7e0f53f3f33588399271b941ec838",
+              ".png": "fe67fdd8e4bb4b05e64fd69669568de46b4b516c4f8c16d688fc512c6df6062d",
+              ".pdf": "28b14776c3e3caf3690a232149c4c455873c190956418da3118c49288d4af662"
+            },
+            "candidate": {
+              ".svg": "1ecf0340aa25775768cbb86fd3e7362dc3e7e0f53f3f33588399271b941ec838",
+              ".png": "fe67fdd8e4bb4b05e64fd69669568de46b4b516c4f8c16d688fc512c6df6062d",
+              ".pdf": "28b14776c3e3caf3690a232149c4c455873c190956418da3118c49288d4af662"
+            }
+          }
+        },
+        "long": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".svg": "86dbed3c86c7de0f72482820ef8880f9d7c4b3cea8002a73c7bfa4188e74e1eb",
+              ".png": "c3fce24d0b30d45e75a63b60f55b6be3d0c1f20f758e66dc297b8147a1eebff6",
+              ".pdf": "22380f41aaf2c424a693a226d88cee3031097d6ed72c29afce8fc7b5b57f8b85"
+            },
+            "candidate": {
+              ".svg": "86dbed3c86c7de0f72482820ef8880f9d7c4b3cea8002a73c7bfa4188e74e1eb",
+              ".png": "c3fce24d0b30d45e75a63b60f55b6be3d0c1f20f758e66dc297b8147a1eebff6",
+              ".pdf": "22380f41aaf2c424a693a226d88cee3031097d6ed72c29afce8fc7b5b57f8b85"
+            }
+          }
+        },
+        "all_repositories": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "73d5447797ba1c58ac93f319bb3cde2b70f1a9e322cf0af41b81dbdd891f3b81",
+              ".pdf": "540d851826844b4c931d898e436bf10dc8c84c083cad411a8936d80e4f68318b",
+              ".svg": "0be3fe23664c65df3c4bfc818a1e17c0379535f91423941d24fd2c898c571d0b"
+            },
+            "candidate": {
+              ".png": "73d5447797ba1c58ac93f319bb3cde2b70f1a9e322cf0af41b81dbdd891f3b81",
+              ".pdf": "540d851826844b4c931d898e436bf10dc8c84c083cad411a8936d80e4f68318b",
+              ".svg": "0be3fe23664c65df3c4bfc818a1e17c0379535f91423941d24fd2c898c571d0b"
+            }
+          }
+        },
+        "short_sparse": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "ad8861fccd2b9bada69c8805860a6de01e397f3a7fbb2aaeaa1170f79678b560",
+              ".pdf": "194a019376a7569b0fc538321e453238f5e28c86251edc645e1b363893fb59aa",
+              ".svg": "b906b2fa019b95ca7de0730fc0b7fb2cf91da52dc1daa3311023ee7e4daf45f7"
+            },
+            "candidate": {
+              ".png": "ad8861fccd2b9bada69c8805860a6de01e397f3a7fbb2aaeaa1170f79678b560",
+              ".pdf": "194a019376a7569b0fc538321e453238f5e28c86251edc645e1b363893fb59aa",
+              ".svg": "b906b2fa019b95ca7de0730fc0b7fb2cf91da52dc1daa3311023ee7e4daf45f7"
+            }
+          }
+        },
+        "long_labels_mtd": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "d33d6f299d4fde51f63c16a4dfff74f3c1c7208785cbd3910d4053ece38092c0",
+              ".pdf": "34c820830c276b6a719f1341067aeb8501d35ff9674df01ef07dcede1d43f382",
+              ".svg": "d8b61729a34880e0631a6c0677437af72aff53c41b0bbaec52d70a96aec5ff06"
+            },
+            "candidate": {
+              ".png": "d33d6f299d4fde51f63c16a4dfff74f3c1c7208785cbd3910d4053ece38092c0",
+              ".pdf": "34c820830c276b6a719f1341067aeb8501d35ff9674df01ef07dcede1d43f382",
+              ".svg": "d8b61729a34880e0631a6c0677437af72aff53c41b0bbaec52d70a96aec5ff06"
+            }
+          }
+        },
+        "huge_counts": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "2f8f075fd1e1bae660e2ca194e6b8a482a7ab2a242630a7a52a903f0fc585a0b",
+              ".pdf": "bdf090846ef55b4583f6701e1bb3ce5a61ba9e44fb16200814a18ae4f77918c0",
+              ".svg": "334d09577df2af1d0f0dfa04ccb05033b9e461a42253fa52c076773e9949f4fb"
+            },
+            "candidate": {
+              ".png": "2f8f075fd1e1bae660e2ca194e6b8a482a7ab2a242630a7a52a903f0fc585a0b",
+              ".pdf": "bdf090846ef55b4583f6701e1bb3ce5a61ba9e44fb16200814a18ae4f77918c0",
+              ".svg": "334d09577df2af1d0f0dfa04ccb05033b9e461a42253fa52c076773e9949f4fb"
+            }
+          }
+        },
+        "one_month": {
+          "bytes_equal_all_formats": true,
+          "sha256": {
+            "baseline": {
+              ".png": "547b3102da511fe1578598550816ac59a74f8e4533063eac3ea43127c9710288",
+              ".pdf": "5c178aab306d4c826f7f574142f01ba6edc5a54a40080fb773e13f147d62523b",
+              ".svg": "ec81ec6bcded9e0382b1ceb9d83f3fdcf816f4b96b2ce0d668b7a3b99d3140ed"
+            },
+            "candidate": {
+              ".png": "547b3102da511fe1578598550816ac59a74f8e4533063eac3ea43127c9710288",
+              ".pdf": "5c178aab306d4c826f7f574142f01ba6edc5a54a40080fb773e13f147d62523b",
+              ".svg": "ec81ec6bcded9e0382b1ceb9d83f3fdcf816f4b96b2ce0d668b7a3b99d3140ed"
+            }
+          }
+        }
+      }
+    },
+    "sketch_and_overlapping_histories": {
+      "sketch": {
+        "hashes": {
+          "baseline": "6818bb6a7d2fd21c9bb323ea089d5c3f8a30741fc452f54ed85b7d77acb0a6e8",
+          "candidate": "6818bb6a7d2fd21c9bb323ea089d5c3f8a30741fc452f54ed85b7d77acb0a6e8"
+        },
+        "equal": true
+      },
+      "overlapping": {
+        "hashes": {
+          "baseline": "5be928a19772e6e7a012d551a001514c48fea0f194aaf520d23499fe2570b1c6",
+          "candidate": "5be928a19772e6e7a012d551a001514c48fea0f194aaf520d23499fe2570b1c6"
+        },
+        "equal": true
+      }
+    }
+  },
+  "checks": {
+    "py312": {
+      "environment": {
+        "python": "3.12.14",
+        "matplotlib": "3.11.1",
+        "numpy": "2.4.6",
+        "requests": "2.34.2"
+      },
+      "tests_passed": 143,
+      "branch_inclusive_coverage_percent": 95.53
+    },
+    "minimum": {
+      "environment": {
+        "python": "3.11.17",
+        "matplotlib": "3.8.0",
+        "numpy": "1.26.4",
+        "requests": "2.33.0"
+      },
+      "tests_passed": 143,
+      "branch_inclusive_coverage_percent": 95.53
+    },
+    "py313": {
+      "environment": {
+        "python": "3.13.16",
+        "matplotlib": "3.11.1",
+        "numpy": "2.4.6",
+        "requests": "2.34.2"
+      },
+      "tests_passed": 143,
+      "branch_inclusive_coverage_percent": 95.53
+    },
+    "py314": {
+      "environment": {
+        "python": "3.14.7",
+        "matplotlib": "3.11.1",
+        "numpy": "2.4.6",
+        "requests": "2.34.2"
+      },
+      "tests_passed": 143,
+      "branch_inclusive_coverage_percent": 95.53
+    }
+  },
+  "profile": {
+    "total_profile_seconds": 1.893,
+    "collection_draw_cumulative_seconds": 1.175,
+    "profiled_collection_draw_calls": 126,
+    "note": "Separate instrumented render; CPU ratios use uninstrumented final pairs"
+  },
+  "reproduction": {
+    "primary": "PYTHONPATH=<source>/src .venv/bin/python scripts/benchmark.py --repeats 7 --memory --output-dir <output-dir>",
+    "repeated_png": "Add --formats png png png",
+    "pair_method": "One warmup/version/case; alternate source order each iteration; gc.collect outside timers; real render_outputs_atomically; every file SHA256 checked each sample"
+  },
+  "final_source_sha256": {
+    "src/githubactivitychart/plotting.py": "862537fbdeb5dc07e2474015d5f0df0d3522950c6c91d76c83ed0f2df0ea6018",
+    "tests/test_plotting.py": "86f5579687d0a64abae6bd3c88d2a2a9f062f476b7078ef9c9894dc1ebb7b239"
+  },
+  "delivery_checks": {
+    "ruff_format": "passed",
+    "ruff_check": "passed",
+    "sdist_and_wheel_build": "passed",
+    "installed_wheel": {
+      "installed_from_wheel": true,
+      "source_sha256": "862537fbdeb5dc07e2474015d5f0df0d3522950c6c91d76c83ed0f2df0ea6018",
+      "help_exit_code": 0,
+      "heavy_imports_deferred": true,
+      "http_client_constructed": true,
+      "outputs": {
+        ".png": {
+          "bytes": 43252,
+          "sha256": "f1820bf7d3273624c0c088548ac2456cc9fcc7b6633cc8fca1d7ff258c5a7607"
+        },
+        ".pdf": {
+          "bytes": 16106,
+          "sha256": "e471ec20c5fd0152935cf46c875bbf734190593dea73a2f8aee27f2de646a766"
+        },
+        ".svg": {
+          "bytes": 39941,
+          "sha256": "c6fe5d4805976588699038ecd4226c90dfa41f6df730965a460b922195a3fb73"
+        }
+      },
+      "all_output_bytes_match_previous_wheel": true
+    }
+  }
+}

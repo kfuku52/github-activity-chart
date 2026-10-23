@@ -1,5 +1,104 @@
 # Performance review
 
+## Additional unreleased review: 2026-10-23
+
+Baseline: `3afad3a6c96d68aa190ad88a2ca0bfcfa6e456df`. This round examined five
+additional approaches and accepted compound rectangle painting for PNG exports.
+[Raw measurements](benchmarks/2026-10-23-round2.json) include the rejected
+prototypes, public API comparisons, final timing samples and output hashes.
+
+### Accepted change
+
+One Artist per repository still caused one hatch-paint operation per monthly
+rectangle inside Matplotlib. A compound path now paints all eligible rectangles
+of a repository together. In the standard 120-month fixture, PNG repository-path
+paints fall from 2,520 to 21, including every zero-height outline.
+
+Batching is selected at draw time using the actual pixel spacing. Overlapping
+antialiased edges and sketch effects require separate paint operations. Explicit
+snapping preserves the pixels of individually snapped rectangles for long
+histories. PDF/SVG use individual rectangles: applying compound painting to PDF
+changed rasterized pixels even when SVG coordinates matched. Existing SVG group
+identifiers are retained, making every final format byte-for-byte compatible.
+
+### Final measurements
+
+CPython 3.12.14, macOS 27.0.1 arm64, Matplotlib 3.11.1 and the locked development
+dependencies. Each version receives one warmup per workload, then seven samples
+for the main workloads in alternating source order. Timed jobs share a process
+lock. Unrelated host activity still affects elapsed times, so CPU is the primary
+local metric. Each sample uses the real atomic-output function and checks every
+export's SHA-256 against the other version.
+
+| Workload | Before CPU median | After CPU median | Reduction |
+| --- | ---: | ---: | ---: |
+| 120 months, top 20 plus Other, PNG/PDF/SVG | 1.523 s | 0.667 s | 56.2% |
+| Same data, three PNG destinations | 1.081 s | 0.243 s | 77.5% |
+
+Elapsed medians were 1.744→0.744 s and 1.167→0.257 s respectively. Vector-only
+and six-month controls were also measured, but their small differences vary
+between runs and are not separate performance claims. The initial 216-month,
+100-repository PNG stress comparison was 14.051→0.961 s CPU; it is retained as
+screening evidence rather than the headline workload.
+
+Separate processes running the existing memory harness recorded peak RSS of
+99.05→100.45 MiB and peak Python allocations of 4.05→4.07 MiB. RSS varies between
+processes; this small difference should not be treated as a reliable memory
+regression percentage. Compound paths add a small coordinate buffer and avoid
+repeated hatch setup; the measured improvement is CPU time.
+
+### Five approaches reviewed
+
+| Approach | Evidence and decision |
+| --- | --- |
+| Compound paths in PathCollection | Accept for eligible PNG painting. All-format compounding failed PDF pixel equivalence; the final implementation preserves separate vector paints and checks raster eligibility. |
+| Compound paths in PathPatch | Reject. Initial three-format CPU was 0.540 s versus 0.450 s for the collection variant; it offered no advantage that justified changing the Artist structure. |
+| Separate zero-height hatching | Reject as superseded. Initial three-format CPU fell from 1.638 to 0.824 s, but required extra collections and changed vector paint/style structure. The selected approach retains all outlines with one collection per repository. |
+| Increase batches from 12 to 24 months | Reject after deeper validation. `kfuku52`, 2024–2025, improved 2.637→2.087 s with equal counts. On `antfu`, up to 70 active repositories/month, the 12-month baseline succeeded while the 24-month query was rejected by GitHub. Another dense account reached the existing repository cap and was unsuitable for timing. |
+| Put monthly aliases under one user field | Reject. JSON fell from 7,538 to 6,884 bytes for the two-year fixture, but median latency was 2.820 s versus 2.637 s. Samples overlap; there is no reliable latency improvement. |
+
+Prototype times are single screening samples with shared backend/font caches;
+the final paired repetitions establish performance. API comparisons
+use public-only data, fixed historical ranges, one full-range warmup per variant,
+three measured repetitions in alternating order and no retries. Digests match for
+every successful fetch. The larger-query error was not hidden by retries or by
+publishing partial data; the shipping batch limit remains twelve months.
+
+### Equivalence and verification
+
+Seven fixtures cover a normal history, 216 months, all-repository display, missing
+months, long labels, Other aggregation, month-to-date annotation, one month and
+integer counts above `2**80`. On Matplotlib 3.11.1 and the minimum 3.8.0, every
+PNG/PDF/SVG matches the baseline bytes exactly, including SVG-first export order.
+Additional checks cover disabled snapping, sketch effects, a narrow axes and a
+1,200-month history with overlapping raster edges. The final eligibility checks
+preserve the original bytes in those cases too.
+
+All 143 tests pass on Python 3.11.17, 3.12.14, 3.13.16 and 3.14.7 with 95.53%
+branch-inclusive coverage. The Python 3.11 environment verifies Matplotlib 3.8.0,
+NumPy 1.26.4 and Requests 2.33.0; the other versions use the development lock.
+Formatting, lint and isolated sdist/wheel builds pass.
+A separate environment installed the built wheel, checked its installed source,
+CLI help and deferred imports, and produced the same PNG/PDF/SVG bytes as the
+previous wheel.
+
+Reproduce the primary workloads with the existing harness, sequentially:
+
+```bash
+baseline_dir="$(mktemp -d)"
+git archive 3afad3a6c96d68aa190ad88a2ca0bfcfa6e456df | tar -x -C "$baseline_dir"
+PYTHONPATH="$baseline_dir/src" .venv/bin/python scripts/benchmark.py \
+  --repeats 7 --memory --output-dir /tmp/chart-round2-before
+.venv/bin/python scripts/benchmark.py \
+  --repeats 7 --memory --output-dir /tmp/chart-round2-after
+# Repeat both commands with --formats png png png for repeated PNG destinations.
+```
+
+For a fair comparison, use the same interpreter and lock, alternate source order
+and require identical output hashes. Raw primary measurements alternate versions
+within one warmed process; the separate memory runs exclude tracing from CPU
+timings and process RSS.
+
 ## Unreleased review: 2026-10-23
 
 Baseline: `dc7c17570c3dbef937ccf36b55a720d803ed7b3e` (0.2.7). Ten separate

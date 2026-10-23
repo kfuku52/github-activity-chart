@@ -286,12 +286,98 @@ def test_chart_batches_rectangles_and_preserves_zero_height_outlines() -> None:
         assert not axis.patches
         assert len(axis.collections) == 2
         assert all(not collection.get_in_layout() for collection in axis.collections)
-        paths = [path for collection in axis.collections for path in collection.get_paths()]
-        assert len(paths) == 4
-        assert sum(path.vertices[:, 1].max() == path.vertices[:, 1].min() for path in paths) == 2
+        assert all(len(collection.get_paths()) == 1 for collection in axis.collections)
+        rectangles = [
+            vertices
+            for collection in axis.collections
+            for vertices in collection.get_paths()[0].vertices.reshape(-1, 5, 2)
+        ]
+        assert len(rectangles) == 4
+        assert all((vertices[0] == vertices[-1]).all() for vertices in rectangles)
+        assert sum(vertices[:, 1].max() == vertices[:, 1].min() for vertices in rectangles) == 2
         assert [text.get_text() for text in axis.get_legend().texts] == ["repo-b (3)", "repo-a (2)"]
     finally:
         figure.clear()
+
+
+def test_exports_select_compound_raster_and_individual_vector_paths(monkeypatch, tmp_path: Path) -> None:
+    save = Figure.savefig
+    paths_per_format = []
+
+    def record_save(figure, *args, **kwargs):
+        result = save(figure, *args, **kwargs)
+        paths_per_format.append(
+            (kwargs["format"], [len(collection.get_paths()) for collection in figure.axes[0].collections])
+        )
+        return result
+
+    monkeypatch.setattr(Figure, "savefig", record_save)
+    render_stacked_bar_charts(
+        sample_counts(), "octocat", [tmp_path / f"chart.{suffix}" for suffix in ("svg", "png", "pdf")]
+    )
+
+    assert paths_per_format == [("svg", [2, 2]), ("png", [1, 1]), ("pdf", [2, 2])]
+
+
+@pytest.mark.parametrize(
+    "snap,sketch,narrow",
+    [(True, None, False), (False, None, False), (True, (1, 100, 2), False), (True, None, True)],
+)
+def test_long_history_matches_individually_painted_rectangles(
+    monkeypatch, tmp_path: Path, snap: bool, sketch, narrow: bool
+) -> None:
+    from matplotlib import rc_context
+    from matplotlib.collections import PolyCollection
+
+    counts = {}
+    for index in range(206):
+        year, month = divmod(2008 * 12 + index, 12)
+        counts[date(year, month + 1, 1)] = {f"repo-{index % 3}": index % 10 + 1}
+    build = plotting._build_chart_figure
+
+    def build_sized(*args, **kwargs):
+        figure = build(*args, **kwargs)
+        if narrow:
+            figure.set_size_inches(2, 3)
+        return figure
+
+    def build_reference(*args, **kwargs):
+        figure = build_sized(*args, **kwargs)
+        axis = figure.axes[0]
+        for collection in list(axis.collections):
+            rectangles = collection.get_paths()[0].vertices.reshape(-1, 5, 2)[:, :4]
+            reference = PolyCollection(
+                rectangles,
+                facecolors=collection.get_facecolors(),
+                hatch=collection.get_hatch(),
+                edgecolors="#222222",
+                linewidths=0.25,
+                joinstyle="miter",
+                capstyle="butt",
+                antialiaseds=True,
+                in_layout=False,
+            )
+            collection.remove()
+            axis.add_collection(reference)
+        return figure
+
+    actual = tmp_path / "compound.png"
+    expected = tmp_path / "individual.png"
+    with rc_context({"path.snap": snap, "path.sketch": sketch}):
+        monkeypatch.setattr(plotting, "_build_chart_figure", build_sized)
+        render_stacked_bar_chart(counts, "octocat", actual)
+        figure = build_reference(counts, "octocat")
+        try:
+            axis = figure.axes[0]
+            axis.set_position(axis.get_position().frozen())
+            axis.set_in_layout(True)
+            figure.savefig(
+                expected, format="png", dpi=200, bbox_inches="tight", metadata={"Software": "github-activity-chart"}
+            )
+        finally:
+            figure.clear()
+
+    assert actual.read_bytes() == expected.read_bytes()
 
 
 def test_repeated_formats_are_encoded_once(monkeypatch, tmp_path: Path) -> None:

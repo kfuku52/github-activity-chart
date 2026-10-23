@@ -178,10 +178,43 @@ def _build_chart_figure(
     as_of: datetime | None = None,
 ) -> Figure:
     from matplotlib.backends.backend_agg import FigureCanvasAgg
-    from matplotlib.collections import PolyCollection
+    from matplotlib.collections import PathCollection
     from matplotlib.figure import Figure
     from matplotlib.patches import Patch
+    from matplotlib.path import Path as MatplotlibPath
     from matplotlib.ticker import MaxNLocator
+
+    class RectangleCollection(PathCollection):
+        def __init__(self, path, **kwargs):
+            super().__init__([path], **kwargs)
+            self._compound_paths = [path]
+            self._rectangle_paths = None
+            self._batching = True
+
+        def set_batching(self, enabled: bool) -> None:
+            self._batching = enabled
+
+        def draw(self, renderer):
+            batch = self._batching and self.get_sketch_params() is None
+            if batch:
+                self.set_snap(True)
+                x_positions = self.get_transform().transform(((0, 0), (1, 0)))[:, 0]
+                gap = abs(x_positions[1] - x_positions[0]) * 0.18
+                # Snapped strokes fit within one pixel column. Unsnapped edges
+                # need additional separation to keep antialiasing independent.
+                batch = gap >= (1.0 if self.get_snap() else 2.0)
+            if batch:
+                paths = self._compound_paths
+            else:
+                if self._rectangle_paths is None:
+                    self._rectangle_paths = [
+                        MatplotlibPath(vertices, closed=True)
+                        for vertices in self._compound_paths[0].vertices.reshape(-1, 5, 2)
+                    ]
+                paths = self._rectangle_paths
+            self.set_paths(paths)
+            self.set_snap(True if batch else None)
+            super().draw(renderer)
 
     if not isinstance(username, str) or not username.strip():
         raise ChartRenderError("GitHub username must be a non-empty string.")
@@ -216,16 +249,24 @@ def _build_chart_figure(
     try:
         axis = figure.subplots()
         legend_handles = []
-        for repository in repositories:
+        path_codes = [
+            MatplotlibPath.MOVETO,
+            MatplotlibPath.LINETO,
+            MatplotlibPath.LINETO,
+            MatplotlibPath.LINETO,
+            MatplotlibPath.CLOSEPOLY,
+        ] * len(months)
+        for repository_index, repository in enumerate(repositories, start=1):
             heights = [normalized_counts[month].get(repository, 0) for month in months]
             color, hatch = _series_style(repository)
-            # Keep zero-height outlines, but avoid one Artist per rectangle.
+            # One compound path paints the hatch once, including zero-height outlines.
             vertices = [
                 [(x - 0.41, base), (x - 0.41 + 0.82, base), (x - 0.41 + 0.82, base + height), (x - 0.41, base + height)]
                 for x, height, base in zip(x_positions, heights, stacked_base, strict=True)
             ]
-            collection = PolyCollection(
-                vertices,
+            compound_vertices = [point for rectangle in vertices for point in (*rectangle, rectangle[0])]
+            collection = RectangleCollection(
+                MatplotlibPath(compound_vertices, path_codes),
                 facecolors=color,
                 hatch=hatch,
                 edgecolors="#222222",
@@ -234,6 +275,10 @@ def _build_chart_figure(
                 capstyle="butt",
                 antialiaseds=True,
                 in_layout=False,
+                # Match the automatic snapping of each individual rectangle even
+                # when the compound path exceeds Agg's automatic-snap size limit.
+                snap=True,
+                gid=f"PolyCollection_{repository_index}",
             )
             axis.add_collection(collection)
             legend_handles.append(
@@ -327,6 +372,9 @@ def render_stacked_bar_charts(
                     except OSError as exc:
                         raise ChartRenderError(f"Could not render `{output_path}`: {exc}") from exc
                 continue
+            # Separate vector paint operations preserve edge rendering and bytes.
+            for collection in axis.collections:
+                collection.set_batching(suffix == ".png")
             # Each backend must start from the same geometry as a fresh figure.
             axis.set_position(initial_position)
             axis.set_in_layout(True)
