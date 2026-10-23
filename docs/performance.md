@@ -1,6 +1,6 @@
 # Performance review
 
-## Additional unreleased review: 2026-10-23
+## Version 0.2.8: rendering review (2026-10-23)
 
 Baseline: `3afad3a6c96d68aa190ad88a2ca0bfcfa6e456df`. This round examined five
 additional approaches and accepted compound rectangle painting for PNG exports.
@@ -99,7 +99,7 @@ and require identical output hashes. Raw primary measurements alternate versions
 within one warmed process; the separate memory runs exclude tracing from CPU
 timings and process RSS.
 
-## Unreleased review: 2026-10-23
+## Version 0.2.8: startup and request review (2026-10-23)
 
 Baseline: `dc7c17570c3dbef937ccf36b55a720d803ed7b3e` (0.2.7). Ten separate
 subagents evaluated the candidates below in isolated source copies. The parent
