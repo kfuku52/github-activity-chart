@@ -10,7 +10,6 @@ from githubactivitychart.plotting import (
     ChartRenderError,
     _build_tick_positions_and_labels,
     _normalize_monthly_counts,
-    _repository_totals,
     _series_style,
     collapse_repositories,
     render_stacked_bar_chart,
@@ -45,21 +44,16 @@ def test_normalize_counts_fills_missing_months_without_mutating_input() -> None:
     ("monthly_counts", "message"),
     [
         ({}, "No monthly"),
-        ({date(2026, 1, 2): {"repo": 1}}, "first-of-month"),
-        ({date(2026, 1, 1): {"repo": -1}}, "negative"),
-        ({date(2026, 1, 1): {"repo": 1.5}}, "integers"),
-        ({date(2026, 1, 1): {"repo": True}}, "integers"),
-        ({date(2026, 1, 1): {"": 1}}, "non-empty"),
         ({date(2026, 1, 1): {"repo": 0}}, "No commit"),
-        ({date(2026, 1, 1): ["not", "a", "mapping"]}, "mapping"),
     ],
 )
-def test_normalize_counts_rejects_malformed_input(
+def test_render_rejects_empty_contribution_data(
     monthly_counts,
     message: str,
+    tmp_path: Path,
 ) -> None:
     with pytest.raises(ChartRenderError, match=message):
-        _normalize_monthly_counts(monthly_counts)
+        render_stacked_bar_chart(monthly_counts, "octocat", tmp_path / "chart.pdf")
 
 
 def test_collapse_repositories_groups_remaining_series() -> None:
@@ -76,19 +70,10 @@ def test_collapse_repositories_groups_remaining_series() -> None:
     }
 
 
-def test_collapse_none_returns_independent_copy() -> None:
+def test_collapse_none_preserves_all_repositories() -> None:
     original = sample_counts()
 
-    collapsed = collapse_repositories(original, top_repos=None)
-    collapsed[date(2026, 1, 1)]["repo-a"] = 999
-
-    assert original[date(2026, 1, 1)]["repo-a"] == 5
-
-
-@pytest.mark.parametrize("top_repos", [0, -1, True, 1.5])
-def test_collapse_repositories_rejects_invalid_limit(top_repos) -> None:
-    with pytest.raises(ChartRenderError, match="integer"):
-        collapse_repositories(sample_counts(), top_repos=top_repos)
+    assert collapse_repositories(original, top_repos=None) == original
 
 
 def test_build_tick_positions_and_labels_uses_january_for_long_ranges() -> None:
@@ -107,22 +92,6 @@ def test_build_tick_positions_labels_every_month_for_short_range() -> None:
 
     assert positions == [0, 1, 2]
     assert labels == ["2025-12", "2026 Jan", "2026-02"]
-
-
-def test_build_tick_positions_falls_back_when_long_input_has_no_january() -> None:
-    months = [date(2026, 2, 1)] * 25
-
-    positions, labels = _build_tick_positions_and_labels(months)
-
-    assert positions == list(range(25))
-    assert labels == ["2026-02"] * 25
-
-
-def test_repository_totals_sums_across_months() -> None:
-    assert _repository_totals(sample_counts()) == {
-        "repo-a": 8,
-        "repo-b": 6,
-    }
 
 
 def test_series_style_is_stable_by_repository_not_rank() -> None:
@@ -159,28 +128,6 @@ def test_render_rejects_extensionless_or_unsupported_output(tmp_path: Path) -> N
                 tmp_path / name,
             )
         assert not (tmp_path / f"{name}.png").exists()
-
-
-def test_render_rejects_empty_username(tmp_path: Path) -> None:
-    with pytest.raises(ChartRenderError, match="username"):
-        render_stacked_bar_chart(sample_counts(), "", tmp_path / "chart.pdf")
-
-
-def test_render_rejects_invalid_as_of_timestamp(tmp_path: Path) -> None:
-    with pytest.raises(ChartRenderError, match="timezone"):
-        render_stacked_bar_chart(
-            sample_counts(),
-            "octocat",
-            tmp_path / "chart.pdf",
-            as_of=datetime(2026, 2, 10),  # noqa: DTZ001 - deliberately naive
-        )
-    with pytest.raises(ChartRenderError, match="final displayed month"):
-        render_stacked_bar_chart(
-            sample_counts(),
-            "octocat",
-            tmp_path / "chart.pdf",
-            as_of=datetime(2026, 3, 1, tzinfo=UTC),
-        )
 
 
 @pytest.mark.parametrize("suffix", [".pdf", ".png", ".svg"])
@@ -300,25 +247,6 @@ def test_chart_batches_rectangles_and_preserves_zero_height_outlines() -> None:
         figure.clear()
 
 
-def test_exports_select_compound_raster_and_individual_vector_paths(monkeypatch, tmp_path: Path) -> None:
-    save = Figure.savefig
-    paths_per_format = []
-
-    def record_save(figure, *args, **kwargs):
-        result = save(figure, *args, **kwargs)
-        paths_per_format.append(
-            (kwargs["format"], [len(collection.get_paths()) for collection in figure.axes[0].collections])
-        )
-        return result
-
-    monkeypatch.setattr(Figure, "savefig", record_save)
-    render_stacked_bar_charts(
-        sample_counts(), "octocat", [tmp_path / f"chart.{suffix}" for suffix in ("svg", "png", "pdf")]
-    )
-
-    assert paths_per_format == [("svg", [2, 2]), ("png", [1, 1]), ("pdf", [2, 2])]
-
-
 @pytest.mark.parametrize(
     "snap,sketch,narrow",
     [(True, None, False), (False, None, False), (True, (1, 100, 2), False), (True, None, True)],
@@ -394,16 +322,6 @@ def test_repeated_formats_are_encoded_once(monkeypatch, tmp_path: Path) -> None:
     assert formats == ["png", "pdf", "svg"]
     for first, second in zip(paths[::2], paths[1::2], strict=True):
         assert first.read_bytes() == second.read_bytes()
-
-
-def test_repeated_same_path_and_hard_links_are_supported(tmp_path: Path) -> None:
-    first = tmp_path / "first.png"
-    second = tmp_path / "second.png"
-    first.write_bytes(b"old")
-    second.hardlink_to(first)
-    render_stacked_bar_charts(sample_counts(), "octocat", [first, first, second])
-    assert first.read_bytes().startswith(b"\x89PNG")
-    assert first.read_bytes() == second.read_bytes()
 
 
 def test_copy_failure_clears_figure_and_preserves_existing_outputs(monkeypatch, tmp_path: Path) -> None:

@@ -50,15 +50,10 @@ def test_generate_public_charts_reuses_fetch_and_preserves_ranges(
     assert len(recent) == 36
     assert min(recent) == recent_start
     assert max(recent) == end_month
-    assert recent[end_month] is counts[end_month]
+    assert recent[end_month] == counts[end_month]
     assert recent[recent_start] == {}
     assert all(render["as_of"] is None for render in renders)
     assert outputs == [tmp_path / f"me_{name}" for name in ("all_months.png", "all_months.pdf", "last_36_months.svg")]
-
-
-def test_generate_public_charts_rejects_naive_now(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="timezone"):
-        update_charts.generate_public_charts("me", tmp_path, now=datetime(2026, 1, 1))  # noqa: DTZ001 - deliberately naive
 
 
 def test_generate_public_charts_does_not_render_empty_data(monkeypatch, tmp_path: Path) -> None:

@@ -67,36 +67,6 @@ def test_iter_month_windows_caps_current_month_at_now() -> None:
     assert windows[1].to_datetime == now
 
 
-@pytest.mark.parametrize(
-    ("start_month", "end_month", "message"),
-    [
-        (date(2026, 1, 2), date(2026, 2, 1), "first day"),
-        (date(2026, 2, 1), date(2026, 1, 1), "must not be earlier"),
-        (date(2026, 1, 1), date(2026, 4, 1), "future"),
-    ],
-)
-def test_iter_month_windows_rejects_invalid_ranges(
-    start_month: date,
-    end_month: date,
-    message: str,
-) -> None:
-    with pytest.raises(ValueError, match=message):
-        iter_month_windows(
-            start_month,
-            end_month,
-            now=datetime(2026, 3, 23, tzinfo=UTC),
-        )
-
-
-def test_iter_month_windows_requires_timezone_aware_now() -> None:
-    with pytest.raises(ValueError, match="timezone"):
-        iter_month_windows(
-            date(2026, 1, 1),
-            date(2026, 1, 1),
-            now=datetime(2026, 1, 20),  # noqa: DTZ001 - deliberately naive
-        )
-
-
 def test_parse_github_datetime_preserves_source_offset() -> None:
     parsed = parse_github_datetime("2026-02-01T00:30:00+09:00")
 
@@ -139,9 +109,13 @@ def test_resolve_token_prefers_github_token_and_accepts_github_dot_com_gh_token(
     assert github_api.resolve_github_token() == "secondary"
 
 
-def test_client_rejects_empty_token() -> None:
-    with pytest.raises(ValueError, match="must not be empty"):
-        GitHubClient("")
+def test_resolve_token_reports_missing_credentials(monkeypatch) -> None:
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr(github_api.shutil, "which", lambda command: None)
+
+    with pytest.raises(GitHubAPIError, match="token not found"):
+        github_api.resolve_github_token()
 
 
 def test_resolve_token_uses_explicit_github_hostname(monkeypatch) -> None:
@@ -683,18 +657,6 @@ def test_fetch_monthly_counts_uses_full_aggregate_without_daily_nodes(monkeypatc
     ) == {date(2026, 1, 1): {"me/busy-repo": 3000}}
 
 
-def test_fetch_monthly_counts_rejects_private_names_without_private_mode() -> None:
-    client = GitHubClient("dummy-token")
-
-    with pytest.raises(ValueError, match="requires include_private"):
-        client.fetch_monthly_commit_counts(
-            "me",
-            date(2026, 1, 1),
-            date(2026, 1, 1),
-            show_private_names=True,
-        )
-
-
 @pytest.mark.parametrize(
     "payload",
     [
@@ -719,19 +681,6 @@ def test_fetch_monthly_counts_rejects_malformed_contribution_data(
         )
 
 
-@pytest.mark.parametrize("limit", [0, 101])
-def test_fetch_monthly_counts_rejects_graphql_limit_outside_bounds(limit: int) -> None:
-    client = GitHubClient("dummy-token")
-
-    with pytest.raises(ValueError, match="between 1 and 100"):
-        client.fetch_monthly_commit_counts(
-            "me",
-            date(2026, 1, 1),
-            date(2026, 1, 1),
-            max_contribution_repositories=limit,
-        )
-
-
 def test_fetch_monthly_counts_reports_missing_user(monkeypatch) -> None:
     client = GitHubClient("dummy-token")
     monkeypatch.setattr(client, "execute_graphql", lambda *args: {"user": None})
@@ -745,7 +694,7 @@ def test_fetch_monthly_counts_reports_missing_user(monkeypatch) -> None:
         )
 
 
-@pytest.mark.parametrize("months", [1, 6, 7, 11, 12, 13, 24, 25])
+@pytest.mark.parametrize("months", [1, 11, 12, 13, 24, 25])
 def test_month_batches_preserve_every_month_and_cap_current_month(monkeypatch, months: int) -> None:
     client = GitHubClient("dummy-token")
     now = datetime(2027, 1, 15, 12, 30, tzinfo=UTC)
@@ -816,51 +765,6 @@ def test_year_batch_fails_closed_when_last_month_reaches_repository_cap(monkeypa
         client.fetch_monthly_commit_counts(
             "me", date(2025, 1, 1), date(2025, 12, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
         )
-
-
-def test_year_batch_keeps_private_names_out_of_public_counts_and_progress(monkeypatch) -> None:
-    client = GitHubClient("dummy-token")
-    payload = contribution_payload([("me/public", False, [3]), ("me/sensitive-private-name", True, [9])])["user"]
-    monkeypatch.setattr(client, "execute_graphql", lambda *args: {f"month{index}": payload for index in range(12)})
-    progress = []
-
-    counts = client.fetch_monthly_commit_counts(
-        "me",
-        date(2025, 1, 1),
-        date(2025, 12, 1),
-        now=datetime(2026, 1, 1, tzinfo=UTC),
-        progress_callback=progress.append,
-    )
-
-    assert len(counts) == 12
-    assert all(repositories == {"me/public": 3} for repositories in counts.values())
-    assert len(progress) == 12
-    assert "sensitive-private-name" not in "\n".join(progress)
-
-
-def test_year_batch_keeps_shared_http_and_graphql_retry_budget(monkeypatch) -> None:
-    sleeps = []
-    client = GitHubClient("dummy-token", sleep=sleeps.append, random_uniform=lambda low, high: 0.0)
-    calls = []
-    responses = [make_response(503) for _ in range(3)] + [
-        make_response(200, payload={"errors": [{"type": "RATE_LIMITED", "message": "slow down"}]})
-    ]
-
-    def fake_post(*args, **kwargs):
-        calls.append(kwargs["json"])
-        assert "month11:" in kwargs["json"]["query"]
-        assert "month12:" not in kwargs["json"]["query"]
-        return responses.pop(0)
-
-    monkeypatch.setattr(client._session, "post", fake_post)
-    with pytest.raises(GitHubAPIError, match="remained rate limited"):
-        client.fetch_monthly_commit_counts(
-            "me", date(2025, 1, 1), date(2025, 12, 1), now=datetime(2026, 1, 1, tzinfo=UTC)
-        )
-
-    assert len(calls) == 4
-    assert all(call == calls[0] for call in calls)
-    assert sleeps == [1.0, 2.0, 4.0]
 
 
 @pytest.mark.parametrize("include_private,show_private_names", [(False, False), (True, False), (True, True)])

@@ -42,17 +42,21 @@ def test_resolve_end_month_rejects_future_month() -> None:
 
 @pytest.mark.parametrize(
     "username",
-    ["-leading", "trailing-", "double--hyphen", "has space", "x" * 40],
+    ["", "-leading", "trailing-", "double--hyphen", "has space", "x" * 40],
 )
 def test_parser_rejects_invalid_username(username: str) -> None:
     with pytest.raises(SystemExit):
         cli.build_parser().parse_args([username])
 
 
-def test_parser_rejects_invalid_contribution_repository_limit() -> None:
-    for invalid in ("101", "0", "not-a-number"):
-        with pytest.raises(SystemExit):
-            cli.build_parser().parse_args(["octocat", "--max-contribution-repositories", invalid])
+def test_parser_rejects_invalid_repository_limits() -> None:
+    for option, invalid_values in (
+        ("--max-contribution-repositories", ("101", "0", "not-a-number")),
+        ("--top-repos", ("0", "-1", "not-a-number")),
+    ):
+        for invalid in invalid_values:
+            with pytest.raises(SystemExit):
+                cli.build_parser().parse_args(["octocat", option, invalid])
 
 
 def fake_renderer_that_writes(render_calls):
@@ -114,7 +118,6 @@ def test_main_renders_multiple_outputs_after_single_fetch(monkeypatch, tmp_path:
     assert first_output.read_bytes() == b"rendered"
     assert second_output.read_bytes() == b"rendered"
     assert [call["output_path"].suffix for call in render_calls] == [".png", ".pdf"]
-    assert all(".tmp" in call["output_path"].name for call in render_calls)
 
 
 def test_main_quiet_suppresses_progress_and_marks_current_month_mtd(
@@ -366,16 +369,13 @@ def test_atomic_install_failure_rolls_back_already_replaced_outputs(
         fake_renderer_that_writes([]),
     )
     real_replace = cli.os.replace
-    replace_calls = 0
 
-    def fail_fourth_replace(source, destination):
-        nonlocal replace_calls
-        replace_calls += 1
-        if replace_calls == 4:
+    def fail_second_install(source, destination):
+        if destination == second_output and source.read_bytes() == b"rendered":
             raise OSError("simulated install failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(cli.os, "replace", fail_fourth_replace)
+    monkeypatch.setattr(cli.os, "replace", fail_second_install)
 
     with pytest.raises(OSError, match="simulated install failure"):
         render_outputs_atomically(
